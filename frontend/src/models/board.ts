@@ -6,6 +6,7 @@ export type Board = {
   description?: string
   visibility: BoardVisibility
   ownerId: string
+  memberIds: string[]
   createdAt: string
   updatedAt: string
 }

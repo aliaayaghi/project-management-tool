@@ -122,7 +122,7 @@ function syncFormWithBoard() {
           </div>
           <div>
             <dt>Owner</dt>
-            <dd>{{ projectStore.currentUser.name }}</dd>
+            <dd>{{ projectStore.currentUser?.name }}</dd>
           </div>
           <div>
             <dt>Access</dt>

@@ -4,7 +4,7 @@ import type { Board } from '../models/board'
 import type { Card, CreateCardInput, UpdateCardInput } from '../models/card'
 import type { ProjectList, UpdateListInput } from '../models/list'
 
-defineProps<{
+const props = defineProps<{
   board: Board | undefined
   lists: ProjectList[]
   cards: Card[]
@@ -16,6 +16,7 @@ const emit = defineEmits<{
   deleteCard: [card: Card]
   updateList: [listId: string, input: UpdateListInput]
   deleteList: [listId: string]
+  moveCard: [card: Card, targetListId: string]
 }>()
 
 function cardsForList(cards: Card[], listId: string) {
@@ -41,6 +42,16 @@ function updateList(listId: string, input: UpdateListInput) {
 function deleteList(listId: string) {
   emit('deleteList', listId)
 }
+
+function moveCard(cardId: string, targetListId: string) {
+  const card = props.cards.find((card) => card.id === cardId)
+
+  if (!card || card.listId === targetListId) {
+    return
+  }
+
+  emit('moveCard', card, targetListId)
+}
 </script>
 
 <template>
@@ -63,6 +74,7 @@ function deleteList(listId: string) {
           @delete-card="deleteCard"
           @update-list="updateList"
           @delete-list="deleteList"
+          @move-card="moveCard"
         />
       </div>
 

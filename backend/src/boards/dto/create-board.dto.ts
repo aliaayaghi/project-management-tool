@@ -12,8 +12,4 @@ export class CreateBoardDto {
 
   @IsIn(['private', 'shared'])
   visibility: BoardVisibility;
-
-  @IsString()
-  @MinLength(1)
-  ownerId: string;
 }

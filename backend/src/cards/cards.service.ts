@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BoardsService } from '../boards/boards.service';
 import { Card } from './card.model';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
@@ -7,13 +8,24 @@ import { UpdateCardDto } from './dto/update-card.dto';
 export class CardsService {
   private cards: Card[] = [];
 
-  findAllForList(boardId: string, listId: string): Card[] {
+  constructor(private readonly boardsService: BoardsService) {}
+
+  findAllForList(boardId: string, listId: string, userId: string): Card[] {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     return this.cards.filter(
       (card) => card.boardId === boardId && card.listId === listId,
     );
   }
 
-  findOne(boardId: string, listId: string, cardId: string): Card {
+  findOne(
+    boardId: string,
+    listId: string,
+    cardId: string,
+    userId: string,
+  ): Card {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     const card = this.cards.find(
       (card) =>
         card.boardId === boardId &&
@@ -30,7 +42,14 @@ export class CardsService {
     return card;
   }
 
-  create(boardId: string, listId: string, createCardDto: CreateCardDto): Card {
+  create(
+    boardId: string,
+    listId: string,
+    createCardDto: CreateCardDto,
+    userId: string,
+  ): Card {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     const now = new Date();
 
     const card: Card = {
@@ -40,7 +59,10 @@ export class CardsService {
       title: createCardDto.title,
       description: createCardDto.description,
       position:
-        createCardDto.position ?? this.findAllForList(boardId, listId).length,
+        createCardDto.position ??
+        this.cards.filter(
+          (card) => card.boardId === boardId && card.listId === listId,
+        ).length,
       createdAt: now,
       updatedAt: now,
     };
@@ -55,12 +77,24 @@ export class CardsService {
     listId: string,
     cardId: string,
     updateCardDto: UpdateCardDto,
+    userId: string,
   ): Card {
-    const card = this.findOne(boardId, listId, cardId);
+    const card = this.findOne(boardId, listId, cardId, userId);
 
     const updatedCard: Card = {
       ...card,
-      ...updateCardDto,
+      ...(updateCardDto.title !== undefined
+        ? { title: updateCardDto.title }
+        : {}),
+      ...(updateCardDto.description !== undefined
+        ? { description: updateCardDto.description }
+        : {}),
+      ...(updateCardDto.position !== undefined
+        ? { position: updateCardDto.position }
+        : {}),
+      ...(updateCardDto.listId !== undefined
+        ? { listId: updateCardDto.listId }
+        : {}),
       updatedAt: new Date(),
     };
 
@@ -73,8 +107,13 @@ export class CardsService {
     return updatedCard;
   }
 
-  remove(boardId: string, listId: string, cardId: string): Card {
-    const card = this.findOne(boardId, listId, cardId);
+  remove(
+    boardId: string,
+    listId: string,
+    cardId: string,
+    userId: string,
+  ): Card {
+    const card = this.findOne(boardId, listId, cardId, userId);
 
     this.cards = this.cards.filter(
       (card) =>

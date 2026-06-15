@@ -6,6 +6,7 @@ export interface Board {
   description?: string;
   visibility: BoardVisibility;
   ownerId: string;
+  memberIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }

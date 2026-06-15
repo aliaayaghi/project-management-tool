@@ -18,7 +18,7 @@ describe('BoardsService', () => {
   });
 
   it('should return all boards', () => {
-    expect(service.findAll()).toEqual([]);
+    expect(service.findAllForUser('user-1')).toEqual([]);
   });
 
   it('should create a board', () => {
@@ -26,20 +26,20 @@ describe('BoardsService', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, 'user-1');
 
     expect(board).toMatchObject({
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
       ownerId: 'user-1',
+      memberIds: [],
     });
 
     expect(board.id).toBeDefined();
     expect(board.createdAt).toBeInstanceOf(Date);
     expect(board.updatedAt).toBeInstanceOf(Date);
-    expect(service.findAll()).toEqual([board]);
+    expect(service.findAllForUser('user-1')).toEqual([board]);
   });
 
   it('should return one board by id', () => {
@@ -47,10 +47,9 @@ describe('BoardsService', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, 'user-1');
 
-    expect(service.findOne(board.id)).toEqual(board);
+    expect(service.findOneForUser(board.id, 'user-1')).toEqual(board);
   });
 
   it('should throw NotFoundException when board does not exist', () => {
@@ -64,13 +63,12 @@ describe('BoardsService', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, 'user-1');
 
     const updatedBoard = service.update(board.id, {
       title: 'Website launch',
       visibility: 'shared',
-    });
+    }, 'user-1');
 
     expect(updatedBoard).toMatchObject({
       id: board.id,
@@ -78,6 +76,7 @@ describe('BoardsService', () => {
       description: 'Plan the new landing page',
       visibility: 'shared',
       ownerId: 'user-1',
+      memberIds: [],
       createdAt: board.createdAt,
     });
 
@@ -92,7 +91,7 @@ describe('BoardsService', () => {
     expect(() =>
       service.update('missing-board-id', {
         title: 'Updated title',
-      }),
+      }, 'user-1'),
     ).toThrow(NotFoundException);
   });
 
@@ -101,14 +100,13 @@ describe('BoardsService', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, 'user-1');
 
-    expect(service.remove(board.id)).toEqual(board);
-    expect(service.findAll()).toEqual([]);
+    expect(service.remove(board.id, 'user-1')).toEqual(board);
+    expect(service.findAllForUser('user-1')).toEqual([]);
   });
 
   it('should throw NotFoundException when removing a missing board', () => {
-    expect(() => service.remove('missing-board-id')).toThrow(NotFoundException);
+    expect(() => service.remove('missing-board-id', 'user-1')).toThrow(NotFoundException);
   });
 });

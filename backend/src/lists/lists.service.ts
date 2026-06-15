@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BoardsService } from '../boards/boards.service';
 import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { ProjectList } from './list.model';
@@ -7,11 +8,17 @@ import { ProjectList } from './list.model';
 export class ListsService {
   private lists: ProjectList[] = [];
 
-  findAllForBoard(boardId: string): ProjectList[] {
+  constructor(private readonly boardsService: BoardsService) {}
+
+  findAllForBoard(boardId: string, userId: string): ProjectList[] {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     return this.lists.filter((list) => list.boardId === boardId);
   }
 
-  findOne(boardId: string, listId: string): ProjectList {
+  findOne(boardId: string, listId: string, userId: string): ProjectList {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     const list = this.lists.find(
       (list) => list.boardId === boardId && list.id === listId,
     );
@@ -25,7 +32,13 @@ export class ListsService {
     return list;
   }
 
-  create(boardId: string, createListDto: CreateListDto): ProjectList {
+  create(
+    boardId: string,
+    createListDto: CreateListDto,
+    userId: string,
+  ): ProjectList {
+    this.boardsService.assertBoardAccess(boardId, userId);
+
     const now = new Date();
 
     const list: ProjectList = {
@@ -33,7 +46,9 @@ export class ListsService {
       boardId,
       title: createListDto.title,
       status: createListDto.status,
-      position: createListDto.position ?? this.findAllForBoard(boardId).length,
+      position:
+        createListDto.position ??
+        this.lists.filter((list) => list.boardId === boardId).length,
       createdAt: now,
       updatedAt: now,
     };
@@ -47,8 +62,9 @@ export class ListsService {
     boardId: string,
     listId: string,
     updateListDto: UpdateListDto,
+    userId: string,
   ): ProjectList {
-    const list = this.findOne(boardId, listId);
+    const list = this.findOne(boardId, listId, userId);
 
     const updatedList: ProjectList = {
       ...list,
@@ -63,8 +79,8 @@ export class ListsService {
     return updatedList;
   }
 
-  remove(boardId: string, listId: string): ProjectList {
-    const list = this.findOne(boardId, listId);
+  remove(boardId: string, listId: string, userId: string): ProjectList {
+    const list = this.findOne(boardId, listId, userId);
 
     this.lists = this.lists.filter(
       (list) => !(list.boardId === boardId && list.id === listId),

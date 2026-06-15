@@ -49,6 +49,12 @@ function updateCard(card: Card, input: UpdateCardInput) {
 function deleteCard(card: Card) {
   projectStore.deleteCard(card)
 }
+
+function moveCard(card: Card, targetListId: string) {
+  projectStore.updateCard(card, {
+    listId: targetListId,
+  })
+}
 </script>
 
 <template>
@@ -75,6 +81,7 @@ function deleteCard(card: Card) {
       @delete-card="deleteCard"
       @update-list="updateList"
       @delete-list="deleteList"
+      @move-card="moveCard"
     />
   </section>
 </template>

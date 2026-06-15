@@ -17,11 +17,7 @@ import {
   updateCard as updateCardRequest,
   updateList as updateListRequest,
 } from '../api/projectApi'
-
-type CurrentUser = {
-  id: string
-  name: string
-}
+import { useAuthStore } from './authStore'
 
 const defaultListTemplates: Array<{
   title: string
@@ -34,13 +30,11 @@ const defaultListTemplates: Array<{
 ]
 
 export const useProjectStore = defineStore('project', () => {
+  const authStore = useAuthStore()
   const boards = ref<Board[]>([])
   const lists = ref<ProjectList[]>([])
   const cards = ref<Card[]>([])
-  const currentUser = ref<CurrentUser>({
-    id: 'user-1',
-    name: 'Demo User',
-  })
+  const currentUser = computed(() => authStore.user)
   const isLoading = ref(false)
   const errorMessage = ref('')
 
@@ -206,7 +200,9 @@ export const useProjectStore = defineStore('project', () => {
       )
 
       cards.value = cards.value.map((currentCard) =>
-        currentCard.id === card.id ? updatedCard : currentCard,
+        currentCard.id === card.id
+          ? { ...currentCard, ...updatedCard }
+          : currentCard,
       )
     } catch (error) {
       errorMessage.value = getErrorMessage(error)

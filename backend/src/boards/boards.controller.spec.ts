@@ -5,6 +5,7 @@ import { NotFoundException } from '@nestjs/common/exceptions/not-found.exception
 
 describe('BoardsController', () => {
   let controller: BoardsController;
+  const request = { user: { id: 'user-1', email: 'ehab@example.com' } } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,7 +21,7 @@ describe('BoardsController', () => {
   });
 
   it('should return all boards', () => {
-    expect(controller.findAll()).toEqual([]);
+    expect(controller.findAll(request)).toEqual([]);
   });
 
   it('should create a board', () => {
@@ -28,14 +29,14 @@ describe('BoardsController', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, request);
 
     expect(board).toMatchObject({
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
       ownerId: 'user-1',
+      memberIds: [],
     });
 
     expect(board.id).toBeDefined();
@@ -48,14 +49,13 @@ describe('BoardsController', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, request);
 
-    expect(controller.findOne(board.id)).toEqual(board);
+    expect(controller.findOne(board.id, request)).toEqual(board);
   });
 
   it('should throw NotFoundException when board does not exist', () => {
-    expect(() => controller.findOne('missing-board-id')).toThrow(
+    expect(() => controller.findOne('missing-board-id', request)).toThrow(
       NotFoundException,
     );
   });
@@ -64,13 +64,12 @@ describe('BoardsController', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, request);
 
     const updatedBoard = controller.update(board.id, {
       title: 'Website launch',
       visibility: 'shared',
-    });
+    }, request);
 
     expect(updatedBoard).toMatchObject({
       id: board.id,
@@ -78,6 +77,7 @@ describe('BoardsController', () => {
       description: 'Plan the new landing page',
       visibility: 'shared',
       ownerId: 'user-1',
+      memberIds: [],
       createdAt: board.createdAt,
     });
   });
@@ -86,7 +86,7 @@ describe('BoardsController', () => {
     expect(() =>
       controller.update('missing-board-id', {
         title: 'Updated title',
-      }),
+      }, request),
     ).toThrow();
   });
 
@@ -95,14 +95,13 @@ describe('BoardsController', () => {
       title: 'Website redesign',
       description: 'Plan the new landing page',
       visibility: 'private',
-      ownerId: 'user-1',
-    });
+    }, request);
 
-    expect(controller.remove(board.id)).toEqual(board);
-    expect(controller.findAll()).toEqual([]);
+    expect(controller.remove(board.id, request)).toEqual(board);
+    expect(controller.findAll(request)).toEqual([]);
   });
 
   it('should throw when removing a missing board', () => {
-    expect(() => controller.remove('missing-board-id')).toThrow();
+    expect(() => controller.remove('missing-board-id', request)).toThrow();
   });
 });

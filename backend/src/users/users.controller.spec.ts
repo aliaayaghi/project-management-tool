@@ -27,6 +27,7 @@ describe('UsersController', () => {
     const user = controller.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(user).toMatchObject({
@@ -36,12 +37,14 @@ describe('UsersController', () => {
     expect(user.id).toBeDefined();
     expect(user.createdAt).toBeInstanceOf(Date);
     expect(user.updatedAt).toBeInstanceOf(Date);
+    expect(user).not.toHaveProperty('passwordHash');
   });
 
   it('should return one user by id', () => {
     const user = controller.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(controller.findOne(user.id)).toEqual(user);
@@ -57,6 +60,7 @@ describe('UsersController', () => {
     const user = controller.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     const updatedUser = controller.update(user.id, {
@@ -83,6 +87,7 @@ describe('UsersController', () => {
     const user = controller.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(controller.remove(user.id)).toEqual(user);

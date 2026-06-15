@@ -16,6 +16,7 @@ const emit = defineEmits<{
   deleteCard: [card: Card]
   updateList: [listId: string, input: UpdateListInput]
   deleteList: [listId: string]
+  moveCard: [cardId: string, targetListId: string]
 }>()
 
 const showCardForm = ref(false)
@@ -68,10 +69,25 @@ function updateCard(card: Card, input: UpdateCardInput) {
 function deleteCard(card: Card) {
   emit('deleteCard', card)
 }
+
+function dropCard(event: DragEvent) {
+  const cardId = event.dataTransfer?.getData('text/plain')
+
+  if (!cardId) {
+    return
+  }
+
+  emit('moveCard', cardId, props.list.id)
+}
 </script>
 
 <template>
-  <section class="list-column" :class="`list-column--${list.status}`">
+  <section
+  class="list-column"
+  :class="`list-column--${list.status}`"
+  @dragover.prevent
+  @drop="dropCard"
+>
     <header class="list-column__header">
       <form v-if="isEditingList" class="list-column__form" @submit.prevent="submitListUpdate">
         <input v-model="listTitle" class="list-column__field" type="text" />

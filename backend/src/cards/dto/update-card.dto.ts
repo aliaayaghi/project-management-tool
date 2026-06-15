@@ -14,4 +14,9 @@ export class UpdateCardDto {
   @IsInt()
   @Min(0)
   position?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  listId?: string;
 }

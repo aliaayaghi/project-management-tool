@@ -19,4 +19,5 @@ export type UpdateCardInput = {
   title?: string
   description?: string
   position?: number
+  listId?: string
 }

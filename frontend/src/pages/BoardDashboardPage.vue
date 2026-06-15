@@ -37,7 +37,7 @@ function toggleBoardForm() {
     <div class="dashboard-page__toolbar">
       <div>
         <p class="dashboard-page__eyebrow">
-          {{ projectStore.currentUser.name }}
+          {{ projectStore.currentUser?.name }}
         </p>
         <h2>Board dashboard</h2>
       </div>

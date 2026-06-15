@@ -1,18 +1,30 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { BoardsService } from '../boards/boards.service';
 import { ListsController } from './lists.controller';
 import { ListsService } from './lists.service';
 
 describe('ListsController', () => {
   let controller: ListsController;
+  let boardsService: BoardsService;
+  let boardId: string;
+  const request = { user: { id: 'user-1', email: 'ehab@example.com' } } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ListsController],
-      providers: [ListsService],
+      providers: [ListsService, BoardsService],
     }).compile();
 
     controller = module.get<ListsController>(ListsController);
+    boardsService = module.get<BoardsService>(BoardsService);
+    boardId = boardsService.create(
+      {
+        title: 'Website redesign',
+        visibility: 'private',
+      },
+      request.user.id,
+    ).id;
   });
 
   it('should be defined', () => {
@@ -20,16 +32,16 @@ describe('ListsController', () => {
   });
 
   it('should return all lists for a board', () => {
-    expect(controller.findAllForBoard('board-1')).toEqual([]);
+    expect(controller.findAllForBoard(boardId, request)).toEqual([]);
   });
 
   it('should create a list', () => {
-    const list = controller.create('board-1', {
+    const list = controller.create(boardId, {
       title: 'To Do',
-    });
+    }, request);
 
     expect(list).toMatchObject({
-      boardId: 'board-1',
+      boardId,
       title: 'To Do',
       position: 0,
     });
@@ -39,32 +51,32 @@ describe('ListsController', () => {
   });
 
   it('should return one list by id', () => {
-    const list = controller.create('board-1', {
+    const list = controller.create(boardId, {
       title: 'To Do',
-    });
+    }, request);
 
-    expect(controller.findOne('board-1', list.id)).toEqual(list);
+    expect(controller.findOne(boardId, list.id, request)).toEqual(list);
   });
 
   it('should throw NotFoundException when list does not exist', () => {
-    expect(() => controller.findOne('board-1', 'missing-list-id')).toThrow(
+    expect(() => controller.findOne(boardId, 'missing-list-id', request)).toThrow(
       NotFoundException,
     );
   });
 
   it('should update a list', () => {
-    const list = controller.create('board-1', {
+    const list = controller.create(boardId, {
       title: 'To Do',
-    });
+    }, request);
 
-    const updatedList = controller.update('board-1', list.id, {
+    const updatedList = controller.update(boardId, list.id, {
       title: 'In Progress',
       position: 1,
-    });
+    }, request);
 
     expect(updatedList).toMatchObject({
       id: list.id,
-      boardId: 'board-1',
+      boardId,
       title: 'In Progress',
       position: 1,
       createdAt: list.createdAt,
@@ -73,22 +85,22 @@ describe('ListsController', () => {
 
   it('should throw when updating a missing list', () => {
     expect(() =>
-      controller.update('board-1', 'missing-list-id', {
+      controller.update(boardId, 'missing-list-id', {
         title: 'Updated title',
-      }),
+      }, request),
     ).toThrow();
   });
 
   it('should remove a list', () => {
-    const list = controller.create('board-1', {
+    const list = controller.create(boardId, {
       title: 'To Do',
-    });
+    }, request);
 
-    expect(controller.remove('board-1', list.id)).toEqual(list);
-    expect(controller.findAllForBoard('board-1')).toEqual([]);
+    expect(controller.remove(boardId, list.id, request)).toEqual(list);
+    expect(controller.findAllForBoard(boardId, request)).toEqual([]);
   });
 
   it('should throw when removing a missing list', () => {
-    expect(() => controller.remove('board-1', 'missing-list-id')).toThrow();
+    expect(() => controller.remove(boardId, 'missing-list-id', request)).toThrow();
   });
 });

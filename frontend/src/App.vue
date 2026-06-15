@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from './stores/authStore'
 
 type ThemeMode = 'light' | 'dark'
 
 const themeMode = ref<ThemeMode>('light')
+const authStore = useAuthStore()
+const router = useRouter()
 
 function toggleTheme() {
   themeMode.value = themeMode.value === 'light' ? 'dark' : 'light'
+}
+
+function logout() {
+  authStore.logout()
+  router.push('/login')
 }
 </script>
 
@@ -21,6 +30,19 @@ function toggleTheme() {
       </RouterLink>
 
       <div class="app-actions">
+        <span v-if="authStore.user" class="app-user">
+          {{ authStore.user.name }}
+        </span>
+
+        <button
+          v-if="authStore.isAuthenticated"
+          class="theme-button"
+          type="button"
+          @click="logout"
+        >
+          Log out
+        </button>
+
         <button class="theme-button" type="button" @click="toggleTheme">
           {{ themeMode === 'light' ? 'Dark' : 'Light' }}
         </button>
@@ -106,6 +128,11 @@ function toggleTheme() {
   color: var(--card-text);
   cursor: pointer;
   font: inherit;
+  font-weight: 800;
+}
+
+.app-user {
+  color: var(--card-text);
   font-weight: 800;
 }
 

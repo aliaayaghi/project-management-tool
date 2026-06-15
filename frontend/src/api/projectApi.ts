@@ -1,10 +1,15 @@
+import type {
+  AuthResponse,
+  LoginInput,
+  RegisterInput,
+} from '../models/auth'
 import type { Board, CreateBoardInput, UpdateBoardInput } from '../models/board'
 import type { Card, CreateCardInput, UpdateCardInput } from '../models/card'
 import type { ListStatus, ProjectList, UpdateListInput } from '../models/list'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
-const DEMO_OWNER_ID = 'user-1'
+const AUTH_TOKEN_STORAGE_KEY = 'project-management-auth-token'
 
 type CreateListInput = {
   title: string
@@ -13,9 +18,12 @@ type CreateListInput = {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
     ...options,
@@ -28,6 +36,20 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+export function register(input: RegisterInput) {
+  return request<AuthResponse>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function login(input: LoginInput) {
+  return request<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export function getBoards() {
   return request<Board[]>('/boards')
 }
@@ -35,10 +57,7 @@ export function getBoards() {
 export function createBoard(input: CreateBoardInput) {
   return request<Board>('/boards', {
     method: 'POST',
-    body: JSON.stringify({
-      ...input,
-      ownerId: DEMO_OWNER_ID,
-    }),
+    body: JSON.stringify(input),
   })
 }
 

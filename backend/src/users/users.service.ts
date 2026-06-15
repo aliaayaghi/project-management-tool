@@ -1,17 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './user.model';
+import { PublicUser, User } from './user.model';
 
 @Injectable()
 export class UsersService {
   private users: User[] = [];
 
-  findAll(): User[] {
-    return this.users;
+  findAll(): PublicUser[] {
+    return this.users.map((user) => this.toPublicUser(user));
   }
 
-  findOne(id: string): User {
+  findOne(id: string): PublicUser {
+    return this.toPublicUser(this.findOneWithPassword(id));
+  }
+
+  findOneWithPassword(id: string): User {
     const user = this.users.find((user) => user.id === id);
 
     if (!user) {
@@ -21,24 +26,36 @@ export class UsersService {
     return user;
   }
 
-  create(createUserDto: CreateUserDto): User {
+  findByEmailWithPassword(email: string): User | undefined {
+    return this.users.find((user) => user.email === email);
+  }
+
+  create(createUserDto: CreateUserDto): PublicUser {
+    const existingUser = this.findByEmailWithPassword(createUserDto.email);
+
+    if (existingUser) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
     const now = new Date();
+    const passwordHash = bcrypt.hashSync(createUserDto.password, 10);
 
     const user: User = {
       id: crypto.randomUUID(),
       name: createUserDto.name,
       email: createUserDto.email,
+      passwordHash,
       createdAt: now,
       updatedAt: now,
     };
 
     this.users.push(user);
 
-    return user;
+    return this.toPublicUser(user);
   }
 
-  update(id: string, updateUserDto: UpdateUserDto): User {
-    const user = this.findOne(id);
+  update(id: string, updateUserDto: UpdateUserDto): PublicUser {
+    const user = this.findOneWithPassword(id);
 
     const updatedUser: User = {
       ...user,
@@ -50,14 +67,20 @@ export class UsersService {
       user.id === id ? updatedUser : user,
     );
 
-    return updatedUser;
+    return this.toPublicUser(updatedUser);
   }
 
-  remove(id: string): User {
-    const user = this.findOne(id);
+  remove(id: string): PublicUser {
+    const user = this.findOneWithPassword(id);
 
     this.users = this.users.filter((user) => user.id !== id);
 
-    return user;
+    return this.toPublicUser(user);
+  }
+
+  private toPublicUser(user: User): PublicUser {
+    const { passwordHash, ...publicUser } = user;
+
+    return publicUser;
   }
 }

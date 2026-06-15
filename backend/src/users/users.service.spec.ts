@@ -25,6 +25,7 @@ describe('UsersService', () => {
     const user = service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(user).toMatchObject({
@@ -34,6 +35,7 @@ describe('UsersService', () => {
     expect(user.id).toBeDefined();
     expect(user.createdAt).toBeInstanceOf(Date);
     expect(user.updatedAt).toBeInstanceOf(Date);
+    expect(user).not.toHaveProperty('passwordHash');
     expect(service.findAll()).toEqual([user]);
   });
 
@@ -41,6 +43,7 @@ describe('UsersService', () => {
     const user = service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(service.findOne(user.id)).toEqual(user);
@@ -54,6 +57,7 @@ describe('UsersService', () => {
     const user = service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     const updatedUser = service.update(user.id, {
@@ -84,6 +88,7 @@ describe('UsersService', () => {
     const user = service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
+      password: 'password123',
     });
 
     expect(service.remove(user.id)).toEqual(user);

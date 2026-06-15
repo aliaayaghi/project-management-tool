@@ -44,10 +44,22 @@ function submitUpdate() {
 function deleteCard() {
   emit('delete', props.card)
 }
+
+function startDrag(event: DragEvent) {
+  if (!event.dataTransfer) {
+    return
+  }
+
+  event.dataTransfer.setData('text/plain', props.card.id)
+  event.dataTransfer.effectAllowed = 'move'
+}
 </script>
 
 <template>
-  <article class="card-item">
+  <article 
+  class="card-item" 
+  draggable="true"
+  @dragstart="startDrag">
     <form v-if="isEditing" class="card-item__form" @submit.prevent="submitUpdate">
       <input v-model="title" class="card-item__field" type="text" />
       <input v-model="description" class="card-item__field" type="text" />
