@@ -21,21 +21,25 @@ function createPrismaStub() {
             (card) =>
               card.boardId === where.boardId && card.listId === where.listId,
           )
-          .sort((firstCard, secondCard) => firstCard.position - secondCard.position),
+          .sort(
+            (firstCard, secondCard) => firstCard.position - secondCard.position,
+          ),
       ),
-      findFirst: jest.fn(({ where }) =>
-        cards.find(
-          (card) =>
-            card.id === where.id &&
-            card.boardId === where.boardId &&
-            card.listId === where.listId,
-        ) ?? null,
+      findFirst: jest.fn(
+        ({ where }) =>
+          cards.find(
+            (card) =>
+              card.id === where.id &&
+              card.boardId === where.boardId &&
+              card.listId === where.listId,
+          ) ?? null,
       ),
-      count: jest.fn(({ where }) =>
-        cards.filter(
-          (card) =>
-            card.boardId === where.boardId && card.listId === where.listId,
-        ).length,
+      count: jest.fn(
+        ({ where }) =>
+          cards.filter(
+            (card) =>
+              card.boardId === where.boardId && card.listId === where.listId,
+          ).length,
       ),
       create: jest.fn(({ data }) => {
         const now = new Date();
@@ -223,6 +227,37 @@ describe('CardsService', () => {
     expect(await service.findOne(boardId, listId, card.id, userId)).toEqual(
       updatedCard,
     );
+  });
+
+  it('should move a card to another list', async () => {
+    const card = await service.create(
+      boardId,
+      listId,
+      {
+        title: 'Polish validation',
+        description: 'Keep drag and drop working',
+      },
+      userId,
+    );
+
+    const movedCard = await service.update(
+      boardId,
+      listId,
+      card.id,
+      {
+        listId: 'list-2',
+      },
+      userId,
+    );
+
+    expect(movedCard).toMatchObject({
+      id: card.id,
+      boardId,
+      listId: 'list-2',
+      title: 'Polish validation',
+      description: 'Keep drag and drop working',
+      position: 0,
+    });
   });
 
   it('should throw NotFoundException when updating a missing card', async () => {

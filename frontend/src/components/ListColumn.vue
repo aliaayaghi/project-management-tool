@@ -8,6 +8,7 @@ import type { ListStatus, ProjectList, UpdateListInput } from '../models/list'
 const props = defineProps<{
   list: ProjectList
   cards: Card[]
+  emptyMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +24,7 @@ const showCardForm = ref(false)
 const isEditingList = ref(false)
 const listTitle = ref(props.list.title)
 const listStatus = ref<ListStatus>(props.list.status)
+const listTitleError = ref('')
 
 function createCard(card: CreateCardInput) {
   emit('createCard', card)
@@ -36,17 +38,22 @@ function toggleCardForm() {
 function startEditingList() {
   listTitle.value = props.list.title
   listStatus.value = props.list.status
+  listTitleError.value = ''
   isEditingList.value = true
 }
 
 function cancelEditingList() {
+  listTitleError.value = ''
   isEditingList.value = false
 }
 
 function submitListUpdate() {
   const trimmedTitle = listTitle.value.trim()
 
+  listTitleError.value = ''
+
   if (!trimmedTitle) {
+    listTitleError.value = 'List title is required.'
     return
   }
 
@@ -90,12 +97,32 @@ function dropCard(event: DragEvent) {
 >
     <header class="list-column__header">
       <form v-if="isEditingList" class="list-column__form" @submit.prevent="submitListUpdate">
-        <input v-model="listTitle" class="list-column__field" type="text" />
-        <select v-model="listStatus" class="list-column__field">
-          <option value="todo">To do</option>
-          <option value="in-progress">In progress</option>
-          <option value="done">Done</option>
-        </select>
+        <label class="list-column__group">
+          <span>List title</span>
+          <input
+            v-model="listTitle"
+            class="list-column__field"
+            type="text"
+            :aria-invalid="Boolean(listTitleError)"
+            :aria-describedby="`list-title-error-${list.id}`"
+          />
+          <span
+            v-if="listTitleError"
+            :id="`list-title-error-${list.id}`"
+            class="list-column__error"
+          >
+            {{ listTitleError }}
+          </span>
+        </label>
+
+        <label class="list-column__group">
+          <span>Status</span>
+          <select v-model="listStatus" class="list-column__field">
+            <option value="todo">To do</option>
+            <option value="in-progress">In progress</option>
+            <option value="done">Done</option>
+          </select>
+        </label>
         <div class="list-column__actions">
           <button class="list-column__button" type="submit">Save</button>
           <button class="list-column__button" type="button" @click="cancelEditingList">Cancel</button>
@@ -126,7 +153,9 @@ function dropCard(event: DragEvent) {
       />
     </div>
 
-    <p v-else class="list-column__empty">No cards yet.</p>
+    <p v-else class="list-column__empty">
+      {{ emptyMessage ?? 'No cards yet.' }}
+    </p>
 
     <button
       class="list-column__add-card"
@@ -236,6 +265,14 @@ h3 {
   width: 100%;
 }
 
+.list-column__group {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--card-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .list-column__field {
   min-height: 2.25rem;
   border: 1px solid var(--card-border);
@@ -244,6 +281,16 @@ h3 {
   background: var(--card-bg);
   color: var(--card-text);
   font: inherit;
+}
+
+.list-column__field[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.list-column__error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .list-column__actions {

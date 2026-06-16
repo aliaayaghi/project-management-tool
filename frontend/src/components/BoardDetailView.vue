@@ -8,6 +8,7 @@ const props = defineProps<{
   board: Board | undefined
   lists: ProjectList[]
   cards: Card[]
+  isFilteringCards?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -69,6 +70,9 @@ function moveCard(cardId: string, targetListId: string) {
           :key="list.id"
           :list="list"
           :cards="cardsForList(cards, list.id)"
+          :empty-message="
+            isFilteringCards ? 'No matching cards in this list.' : 'No cards yet.'
+          "
           @create-card="createCard"
           @update-card="updateCard"
           @delete-card="deleteCard"

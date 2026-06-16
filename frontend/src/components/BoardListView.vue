@@ -5,6 +5,7 @@ import type { Board, UpdateBoardInput } from '../models/board'
 defineProps<{
   boards: Board[]
   selectedBoardId: string | null
+  emptyMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -41,7 +42,7 @@ function deleteBoard(boardId: string) {
     />
 
     <p v-if="!boards.length" class="board-list-view__empty">
-      No boards yet. Create your first board above.
+      {{ emptyMessage ?? 'No boards yet. Create your first board above.' }}
     </p>
   </section>
 </template>

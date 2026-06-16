@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BoardCreateForm from '../components/BoardCreateForm.vue'
 import BoardListView from '../components/BoardListView.vue'
@@ -9,6 +9,22 @@ import type { CreateBoardInput } from '../models/board'
 const projectStore = useProjectStore()
 const router = useRouter()
 const showBoardForm = ref(false)
+const boardSearchQuery = ref('')
+
+const filteredBoards = computed(() => {
+  const query = boardSearchQuery.value.trim().toLowerCase()
+
+  if (!query) {
+    return projectStore.boards
+  }
+
+  return projectStore.boards.filter((board) =>
+    [board.title, board.description ?? '', board.visibility]
+      .join(' ')
+      .toLowerCase()
+      .includes(query),
+  )
+})
 
 onMounted(() => {
   projectStore.loadBoards()
@@ -54,6 +70,15 @@ function toggleBoardForm() {
 
     <BoardCreateForm v-if="showBoardForm" @create="createBoard" />
 
+    <label class="dashboard-page__search">
+      <span>Search boards</span>
+      <input
+        v-model="boardSearchQuery"
+        type="search"
+        placeholder="Filter by title, description, or visibility"
+      />
+    </label>
+
     <p v-if="projectStore.isLoading" class="status-message">
       Loading project data...
     </p>
@@ -63,12 +88,17 @@ function toggleBoardForm() {
     </p>
 
     <p class="dashboard-page__summary">
-      {{ projectStore.boardCount }} boards
+      {{ filteredBoards.length }} of {{ projectStore.boardCount }} boards
     </p>
 
     <BoardListView
-      :boards="projectStore.boards"
+      :boards="filteredBoards"
       :selected-board-id="null"
+      :empty-message="
+        boardSearchQuery.trim()
+          ? 'No boards match your search.'
+          : 'No boards yet. Create your first board above.'
+      "
       @select="selectBoard"
       @update="projectStore.updateBoard"
       @delete="projectStore.deleteBoard"
@@ -94,6 +124,30 @@ function toggleBoardForm() {
   margin: 0;
   color: var(--accent);
   font-weight: 800;
+}
+
+.dashboard-page__search {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--card-text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.dashboard-page__search input {
+  min-height: 2.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0 0.85rem;
+  background: var(--card-bg);
+  color: var(--card-text);
+  font: inherit;
+}
+
+.dashboard-page__search input:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
 }
 
 h2 {

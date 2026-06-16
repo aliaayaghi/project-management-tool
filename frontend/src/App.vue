@@ -65,6 +65,8 @@ function logout() {
   --accent: #2e5070;
   --accent-soft: #daeaf5;
   --accent-hover: #25425c;
+  --danger: #a33434;
+  --danger-soft: #f9dddd;
 
   min-height: 100vh;
   padding: 2rem;
@@ -82,6 +84,8 @@ function logout() {
   --accent: #5b7fa6;
   --accent-soft: rgba(91, 127, 166, 0.35);
   --accent-hover: #6f93ba;
+  --danger: #f08d8d;
+  --danger-soft: rgba(163, 52, 52, 0.25);
 }
 
 .app-header {
@@ -171,9 +175,9 @@ h1 {
 }
 
 .error-message {
-  border: 1px solid #a33434;
-  background: #f9dddd;
-  color: #7b2020;
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 @media (max-width: 760px) {

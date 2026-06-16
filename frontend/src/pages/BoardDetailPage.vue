@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import BoardDetailView from '../components/BoardDetailView.vue'
 import { useProjectStore } from '../stores/projectStore'
@@ -8,11 +8,26 @@ import type { UpdateListInput } from '../models/list'
 
 const route = useRoute()
 const projectStore = useProjectStore()
+const cardSearchQuery = ref('')
 
 const boardId = computed(() => route.params.boardId as string)
 const board = computed(() => projectStore.getBoard(boardId.value))
 const lists = computed(() => projectStore.getBoardLists(boardId.value))
 const cards = computed(() => projectStore.getBoardCards(boardId.value))
+const filteredCards = computed(() => {
+  const query = cardSearchQuery.value.trim().toLowerCase()
+
+  if (!query) {
+    return cards.value
+  }
+
+  return cards.value.filter((card) =>
+    [card.title, card.description ?? '']
+      .join(' ')
+      .toLowerCase()
+      .includes(query),
+  )
+})
 
 onMounted(async () => {
   await ensureBoardPageData()
@@ -72,10 +87,24 @@ function moveCard(card: Card, targetListId: string) {
       {{ projectStore.errorMessage }}
     </p>
 
+    <label class="board-page__search">
+      <span>Search cards</span>
+      <input
+        v-model="cardSearchQuery"
+        type="search"
+        placeholder="Filter by card title or description"
+      />
+    </label>
+
+    <p class="board-page__summary">
+      {{ filteredCards.length }} of {{ cards.length }} cards
+    </p>
+
     <BoardDetailView
       :board="board"
       :lists="lists"
-      :cards="cards"
+      :cards="filteredCards"
+      :is-filtering-cards="Boolean(cardSearchQuery.trim())"
       @create-card="createCard"
       @update-card="updateCard"
       @delete-card="deleteCard"
@@ -111,5 +140,35 @@ function moveCard(card: Card, targetListId: string) {
 .board-page__nav a.router-link-active {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+.board-page__search {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--card-text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.board-page__search input {
+  min-height: 2.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0 0.85rem;
+  background: var(--card-bg);
+  color: var(--card-text);
+  font: inherit;
+}
+
+.board-page__search input:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
+.board-page__summary {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 800;
 }
 </style>

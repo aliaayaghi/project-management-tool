@@ -17,6 +17,11 @@ type CreateListInput = {
   position: number
 }
 
+type ApiErrorResponse = {
+  message?: string | string[]
+  error?: string
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
 
@@ -30,10 +35,27 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`)
+    throw new Error(await getApiErrorMessage(response))
   }
 
   return response.json() as Promise<T>
+}
+
+async function getApiErrorMessage(response: Response) {
+  const fallbackMessage = `Request failed with status ${response.status}`
+
+  try {
+    const body = (await response.json()) as ApiErrorResponse
+    const message = body.message
+
+    if (Array.isArray(message)) {
+      return message.join(' ')
+    }
+
+    return message || body.error || fallbackMessage
+  } catch {
+    return fallbackMessage
+  }
 }
 
 export function register(input: RegisterInput) {

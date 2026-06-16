@@ -8,6 +8,7 @@ const props = defineProps<{
 
 const title = ref('')
 const description = ref('')
+const titleError = ref('')
 
 const emit = defineEmits<{
   create: [card: CreateCardInput]
@@ -17,7 +18,10 @@ function submitForm() {
   const trimmedTitle = title.value.trim()
   const trimmedDescription = description.value.trim()
 
+  titleError.value = ''
+
   if (!trimmedTitle) {
+    titleError.value = 'Card title is required.'
     return
   }
 
@@ -34,19 +38,34 @@ function submitForm() {
 
 <template>
   <form class="card-create-form" @submit.prevent="submitForm">
-    <input
-      v-model="title"
-      class="card-create-form__field"
-      type="text"
-      placeholder="Card title"
-    />
+    <label class="card-create-form__group">
+      <span>Card title</span>
+      <input
+        v-model="title"
+        class="card-create-form__field"
+        type="text"
+        placeholder="Card title"
+        :aria-invalid="Boolean(titleError)"
+        :aria-describedby="`card-title-error-${listId}`"
+      />
+      <span
+        v-if="titleError"
+        :id="`card-title-error-${listId}`"
+        class="card-create-form__error"
+      >
+        {{ titleError }}
+      </span>
+    </label>
 
-    <input
-      v-model="description"
-      class="card-create-form__field"
-      type="text"
-      placeholder="Description"
-    />
+    <label class="card-create-form__group">
+      <span>Description</span>
+      <input
+        v-model="description"
+        class="card-create-form__field"
+        type="text"
+        placeholder="Description"
+      />
+    </label>
 
     <button class="card-create-form__button" type="submit">
       Add card
@@ -59,6 +78,14 @@ function submitForm() {
   display: grid;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+.card-create-form__group {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--card-text);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .card-create-form__field {
@@ -75,6 +102,16 @@ function submitForm() {
   border-color: var(--accent);
   outline: 2px solid var(--accent-soft);
   outline-offset: 1px;
+}
+
+.card-create-form__field[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.card-create-form__error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .card-create-form__button {

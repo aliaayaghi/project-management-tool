@@ -18,6 +18,7 @@ const isEditing = ref(false)
 const title = ref(props.board.title)
 const description = ref(props.board.description ?? '')
 const visibility = ref<BoardVisibility>(props.board.visibility)
+const titleError = ref('')
 
 function selectBoard() {
   if (isEditing.value) {
@@ -31,10 +32,12 @@ function startEditing() {
   title.value = props.board.title
   description.value = props.board.description ?? ''
   visibility.value = props.board.visibility
+  titleError.value = ''
   isEditing.value = true
 }
 
 function cancelEditing() {
+  titleError.value = ''
   isEditing.value = false
 }
 
@@ -42,7 +45,10 @@ function submitUpdate() {
   const trimmedTitle = title.value.trim()
   const trimmedDescription = description.value.trim()
 
+  titleError.value = ''
+
   if (!trimmedTitle) {
+    titleError.value = 'Board title is required.'
     return
   }
 
@@ -63,12 +69,36 @@ function deleteBoard() {
 <template>
   <article class="board-card" :class="{ 'board-card--selected': isSelected }" @click="selectBoard">
     <form v-if="isEditing" class="board-card__form" @click.stop @submit.prevent="submitUpdate">
-      <input v-model="title" class="board-card__field" type="text" />
-      <input v-model="description" class="board-card__field" type="text" />
-      <select v-model="visibility" class="board-card__field">
-        <option value="private">Private</option>
-        <option value="shared">Shared</option>
-      </select>
+      <label class="board-card__group">
+        <span>Board title</span>
+        <input
+          v-model="title"
+          class="board-card__field"
+          type="text"
+          :aria-invalid="Boolean(titleError)"
+          :aria-describedby="`edit-board-title-error-${board.id}`"
+        />
+        <span
+          v-if="titleError"
+          :id="`edit-board-title-error-${board.id}`"
+          class="board-card__error"
+        >
+          {{ titleError }}
+        </span>
+      </label>
+
+      <label class="board-card__group">
+        <span>Description</span>
+        <input v-model="description" class="board-card__field" type="text" />
+      </label>
+
+      <label class="board-card__group">
+        <span>Visibility</span>
+        <select v-model="visibility" class="board-card__field">
+          <option value="private">Private</option>
+          <option value="shared">Shared</option>
+        </select>
+      </label>
 
       <div class="board-card__actions">
         <button class="board-card__button" type="submit">Save</button>
@@ -131,6 +161,14 @@ function deleteBoard() {
   gap: 0.5rem;
 }
 
+.board-card__group {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--card-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .board-card__field {
   min-height: 2.25rem;
   border: 1px solid var(--card-border);
@@ -139,6 +177,16 @@ function deleteBoard() {
   background: var(--card-bg);
   color: var(--card-text);
   font: inherit;
+}
+
+.board-card__field[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.board-card__error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .board-card__actions {

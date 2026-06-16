@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsIn,
   IsInt,
@@ -9,6 +10,7 @@ import {
 import type { ListStatus } from '../list.model';
 
 export class CreateListDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1)
   title: string;
