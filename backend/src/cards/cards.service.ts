@@ -1,37 +1,47 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { BoardsService } from '../boards/boards.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Card } from './card.model';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 
+type CardRow = Omit<Card, 'description'> & {
+  description: string | null;
+};
+
 @Injectable()
 export class CardsService {
-  private cards: Card[] = [];
+  constructor(
+    private readonly boardsService: BoardsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  constructor(private readonly boardsService: BoardsService) {}
+  async findAllForList(
+    boardId: string,
+    listId: string,
+    userId: string,
+  ): Promise<Card[]> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-  findAllForList(boardId: string, listId: string, userId: string): Card[] {
-    this.boardsService.assertBoardAccess(boardId, userId);
+    const cards = await this.prisma.card.findMany({
+      where: { boardId, listId },
+      orderBy: { position: 'asc' },
+    });
 
-    return this.cards.filter(
-      (card) => card.boardId === boardId && card.listId === listId,
-    );
+    return cards.map((card) => this.toCardModel(card));
   }
 
-  findOne(
+  async findOne(
     boardId: string,
     listId: string,
     cardId: string,
     userId: string,
-  ): Card {
-    this.boardsService.assertBoardAccess(boardId, userId);
+  ): Promise<Card> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-    const card = this.cards.find(
-      (card) =>
-        card.boardId === boardId &&
-        card.listId === listId &&
-        card.id === cardId,
-    );
+    const card = await this.prisma.card.findFirst({
+      where: { id: cardId, boardId, listId },
+    });
 
     if (!card) {
       throw new NotFoundException(
@@ -39,91 +49,85 @@ export class CardsService {
       );
     }
 
-    return card;
+    return this.toCardModel(card);
   }
 
-  create(
+  async create(
     boardId: string,
     listId: string,
     createCardDto: CreateCardDto,
     userId: string,
-  ): Card {
-    this.boardsService.assertBoardAccess(boardId, userId);
+  ): Promise<Card> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-    const now = new Date();
+    const position =
+      createCardDto.position ??
+      (await this.prisma.card.count({
+        where: { boardId, listId },
+      }));
 
-    const card: Card = {
-      id: crypto.randomUUID(),
-      boardId,
-      listId,
-      title: createCardDto.title,
-      description: createCardDto.description,
-      position:
-        createCardDto.position ??
-        this.cards.filter(
-          (card) => card.boardId === boardId && card.listId === listId,
-        ).length,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const card = await this.prisma.card.create({
+      data: {
+        boardId,
+        listId,
+        title: createCardDto.title,
+        description: createCardDto.description,
+        position,
+      },
+    });
 
-    this.cards.push(card);
-
-    return card;
+    return this.toCardModel(card);
   }
 
-  update(
+  async update(
     boardId: string,
     listId: string,
     cardId: string,
     updateCardDto: UpdateCardDto,
     userId: string,
-  ): Card {
-    const card = this.findOne(boardId, listId, cardId, userId);
+  ): Promise<Card> {
+    await this.findOne(boardId, listId, cardId, userId);
 
-    const updatedCard: Card = {
-      ...card,
-      ...(updateCardDto.title !== undefined
-        ? { title: updateCardDto.title }
-        : {}),
-      ...(updateCardDto.description !== undefined
-        ? { description: updateCardDto.description }
-        : {}),
-      ...(updateCardDto.position !== undefined
-        ? { position: updateCardDto.position }
-        : {}),
-      ...(updateCardDto.listId !== undefined
-        ? { listId: updateCardDto.listId }
-        : {}),
-      updatedAt: new Date(),
-    };
+    const updatedCard = await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        ...(updateCardDto.title !== undefined
+          ? { title: updateCardDto.title }
+          : {}),
+        ...(updateCardDto.description !== undefined
+          ? { description: updateCardDto.description }
+          : {}),
+        ...(updateCardDto.position !== undefined
+          ? { position: updateCardDto.position }
+          : {}),
+        ...(updateCardDto.listId !== undefined
+          ? { listId: updateCardDto.listId }
+          : {}),
+      },
+    });
 
-    this.cards = this.cards.map((card) =>
-      card.boardId === boardId && card.listId === listId && card.id === cardId
-        ? updatedCard
-        : card,
-    );
-
-    return updatedCard;
+    return this.toCardModel(updatedCard);
   }
 
-  remove(
+  async remove(
     boardId: string,
     listId: string,
     cardId: string,
     userId: string,
-  ): Card {
-    const card = this.findOne(boardId, listId, cardId, userId);
+  ): Promise<Card> {
+    const card = await this.findOne(boardId, listId, cardId, userId);
 
-    this.cards = this.cards.filter(
-      (card) =>
-        !(
-          card.boardId === boardId &&
-          card.listId === listId &&
-          card.id === cardId
-        ),
-    );
+    await this.prisma.card.delete({
+      where: { id: cardId },
+    });
 
     return card;
+  }
+
+  private toCardModel(card: CardRow): Card {
+    return {
+      ...card,
+      description: card.description ?? undefined,
+    };
   }
 }

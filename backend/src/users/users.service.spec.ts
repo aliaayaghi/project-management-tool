@@ -1,13 +1,84 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from './users.service';
+import { User } from './user.model';
+
+function createPrismaStub() {
+  let idCounter = 1;
+  let users: User[] = [];
+
+  return {
+    user: {
+      findMany: jest.fn(() => users),
+      findUnique: jest.fn(({ where }) => {
+        if ('id' in where) {
+          return users.find((user) => user.id === where.id) ?? null;
+        }
+
+        return users.find((user) => user.email === where.email) ?? null;
+      }),
+      create: jest.fn(({ data }) => {
+        const now = new Date();
+        const user = {
+          id: `user-${idCounter++}`,
+          name: data.name,
+          email: data.email,
+          passwordHash: data.passwordHash,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        users.push(user);
+
+        return user;
+      }),
+      update: jest.fn(({ where, data }) => {
+        const user = users.find((currentUser) => currentUser.id === where.id);
+
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        const updatedUser = {
+          ...user,
+          ...data,
+          updatedAt: new Date(),
+        };
+
+        users = users.map((currentUser) =>
+          currentUser.id === where.id ? updatedUser : currentUser,
+        );
+
+        return updatedUser;
+      }),
+      delete: jest.fn(({ where }) => {
+        const user = users.find((currentUser) => currentUser.id === where.id);
+
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        users = users.filter((currentUser) => currentUser.id !== where.id);
+
+        return user;
+      }),
+    },
+  };
+}
 
 describe('UsersService', () => {
   let service: UsersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService],
+      providers: [
+        UsersService,
+        {
+          provide: PrismaService,
+          useValue: createPrismaStub(),
+        },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -17,12 +88,12 @@ describe('UsersService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should return all users', () => {
-    expect(service.findAll()).toEqual([]);
+  it('should return all users', async () => {
+    expect(await service.findAll()).toEqual([]);
   });
 
-  it('should create a user', () => {
-    const user = service.create({
+  it('should create a user without exposing the password hash', async () => {
+    const user = await service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
       password: 'password123',
@@ -36,31 +107,49 @@ describe('UsersService', () => {
     expect(user.createdAt).toBeInstanceOf(Date);
     expect(user.updatedAt).toBeInstanceOf(Date);
     expect(user).not.toHaveProperty('passwordHash');
-    expect(service.findAll()).toEqual([user]);
+    expect(await service.findAll()).toEqual([user]);
   });
 
-  it('should return one user by id', () => {
-    const user = service.create({
+  it('should reject duplicate emails', async () => {
+    await service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
       password: 'password123',
     });
 
-    expect(service.findOne(user.id)).toEqual(user);
+    await expect(
+      service.create({
+        name: 'Other',
+        email: 'ehab@example.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow(ConflictException);
   });
 
-  it('should throw NotFoundException when user does not exist', () => {
-    expect(() => service.findOne('missing-user-id')).toThrow(NotFoundException);
-  });
-
-  it('should update a user', () => {
-    const user = service.create({
+  it('should return one user by id', async () => {
+    const user = await service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
       password: 'password123',
     });
 
-    const updatedUser = service.update(user.id, {
+    expect(await service.findOne(user.id)).toEqual(user);
+  });
+
+  it('should throw NotFoundException when user does not exist', async () => {
+    await expect(service.findOne('missing-user-id')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('should update a user', async () => {
+    const user = await service.create({
+      name: 'Ehab',
+      email: 'ehab@example.com',
+      password: 'password123',
+    });
+
+    const updatedUser = await service.update(user.id, {
       name: 'Ehab N.',
     });
 
@@ -73,29 +162,31 @@ describe('UsersService', () => {
     expect(updatedUser.updatedAt.getTime()).toBeGreaterThanOrEqual(
       user.updatedAt.getTime(),
     );
-    expect(service.findOne(user.id)).toEqual(updatedUser);
+    expect(await service.findOne(user.id)).toEqual(updatedUser);
   });
 
-  it('should throw NotFoundException when updating a missing user', () => {
-    expect(() =>
+  it('should throw NotFoundException when updating a missing user', async () => {
+    await expect(
       service.update('missing-user-id', {
         name: 'Updated name',
       }),
-    ).toThrow(NotFoundException);
+    ).rejects.toThrow(NotFoundException);
   });
 
-  it('should remove a user', () => {
-    const user = service.create({
+  it('should remove a user', async () => {
+    const user = await service.create({
       name: 'Ehab',
       email: 'ehab@example.com',
       password: 'password123',
     });
 
-    expect(service.remove(user.id)).toEqual(user);
-    expect(service.findAll()).toEqual([]);
+    expect(await service.remove(user.id)).toEqual(user);
+    expect(await service.findAll()).toEqual([]);
   });
 
-  it('should throw NotFoundException when removing a missing user', () => {
-    expect(() => service.remove('missing-user-id')).toThrow(NotFoundException);
+  it('should throw NotFoundException when removing a missing user', async () => {
+    await expect(service.remove('missing-user-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

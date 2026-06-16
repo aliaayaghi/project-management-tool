@@ -1,27 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ListStatus as PrismaListStatus } from '../../generated/prisma/client';
 import { BoardsService } from '../boards/boards.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { ProjectList } from './list.model';
 
+type ProjectListRow = Omit<ProjectList, 'status'> & {
+  status: string;
+};
+
 @Injectable()
 export class ListsService {
-  private lists: ProjectList[] = [];
+  constructor(
+    private readonly boardsService: BoardsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  constructor(private readonly boardsService: BoardsService) {}
+  async findAllForBoard(
+    boardId: string,
+    userId: string,
+  ): Promise<ProjectList[]> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-  findAllForBoard(boardId: string, userId: string): ProjectList[] {
-    this.boardsService.assertBoardAccess(boardId, userId);
+    const lists = await this.prisma.projectList.findMany({
+      where: { boardId },
+      orderBy: { position: 'asc' },
+    });
 
-    return this.lists.filter((list) => list.boardId === boardId);
+    return lists.map((list) => this.toListModel(list));
   }
 
-  findOne(boardId: string, listId: string, userId: string): ProjectList {
-    this.boardsService.assertBoardAccess(boardId, userId);
+  async findOne(
+    boardId: string,
+    listId: string,
+    userId: string,
+  ): Promise<ProjectList> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-    const list = this.lists.find(
-      (list) => list.boardId === boardId && list.id === listId,
-    );
+    const list = await this.prisma.projectList.findFirst({
+      where: { id: listId, boardId },
+    });
 
     if (!list) {
       throw new NotFoundException(
@@ -29,63 +48,82 @@ export class ListsService {
       );
     }
 
-    return list;
+    return this.toListModel(list);
   }
 
-  create(
+  async create(
     boardId: string,
     createListDto: CreateListDto,
     userId: string,
-  ): ProjectList {
-    this.boardsService.assertBoardAccess(boardId, userId);
+  ): Promise<ProjectList> {
+    await this.boardsService.assertBoardAccess(boardId, userId);
 
-    const now = new Date();
+    const position =
+      createListDto.position ??
+      (await this.prisma.projectList.count({
+        where: { boardId },
+      }));
 
-    const list: ProjectList = {
-      id: crypto.randomUUID(),
-      boardId,
-      title: createListDto.title,
-      status: createListDto.status,
-      position:
-        createListDto.position ??
-        this.lists.filter((list) => list.boardId === boardId).length,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const list = await this.prisma.projectList.create({
+      data: {
+        boardId,
+        title: createListDto.title,
+        status: this.toPrismaListStatus(createListDto.status),
+        position,
+      },
+    });
 
-    this.lists.push(list);
-
-    return list;
+    return this.toListModel(list);
   }
 
-  update(
+  async update(
     boardId: string,
     listId: string,
     updateListDto: UpdateListDto,
     userId: string,
-  ): ProjectList {
-    const list = this.findOne(boardId, listId, userId);
+  ): Promise<ProjectList> {
+    await this.findOne(boardId, listId, userId);
 
-    const updatedList: ProjectList = {
-      ...list,
-      ...updateListDto,
-      updatedAt: new Date(),
-    };
+    const { status, ...listUpdateData } = updateListDto;
 
-    this.lists = this.lists.map((list) =>
-      list.boardId === boardId && list.id === listId ? updatedList : list,
-    );
+    const updatedList = await this.prisma.projectList.update({
+      where: { id: listId },
+      data: {
+        ...listUpdateData,
+        ...(status !== undefined
+          ? { status: this.toPrismaListStatus(status) }
+          : {}),
+      },
+    });
 
-    return updatedList;
+    return this.toListModel(updatedList);
   }
 
-  remove(boardId: string, listId: string, userId: string): ProjectList {
-    const list = this.findOne(boardId, listId, userId);
+  async remove(
+    boardId: string,
+    listId: string,
+    userId: string,
+  ): Promise<ProjectList> {
+    const list = await this.findOne(boardId, listId, userId);
 
-    this.lists = this.lists.filter(
-      (list) => !(list.boardId === boardId && list.id === listId),
-    );
+    await this.prisma.projectList.delete({
+      where: { id: listId },
+    });
 
     return list;
+  }
+
+  private toListModel(list: ProjectListRow): ProjectList {
+    return {
+      ...list,
+      status:
+        list.status === PrismaListStatus.in_progress
+          ? 'in-progress'
+          : (list.status as ProjectList['status']),
+    };
+  }
+
+  private toPrismaListStatus(status: ProjectList['status']): PrismaListStatus {
+    return status === 'in-progress' ? PrismaListStatus.in_progress : status;
   }
 }

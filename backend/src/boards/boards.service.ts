@@ -3,30 +3,52 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { Board } from './board.model';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 
+type BoardWithMembers = {
+  id: string;
+  title: string;
+  description: string | null;
+  visibility: string;
+  ownerId: string;
+  members: Array<{ userId: string }>;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class BoardsService {
-  private boards: Board[] = [];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAllForUser(userId: string): Board[] {
-    return this.boards.filter((board) => this.canAccessBoard(board, userId));
+  async findAllForUser(userId: string): Promise<Board[]> {
+    const boards = await this.prisma.board.findMany({
+      where: {
+        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      },
+      include: { members: true },
+    });
+
+    return boards.map((board) => this.toBoardModel(board));
   }
 
-  findOne(id: string): Board {
-    const board = this.boards.find((board) => board.id === id);
+  async findOne(id: string): Promise<Board> {
+    const board = await this.prisma.board.findUnique({
+      where: { id },
+      include: { members: true },
+    });
 
     if (!board) {
       throw new NotFoundException(`Board with id "${id}" not found`);
     }
 
-    return board;
+    return this.toBoardModel(board);
   }
 
-  findOneForUser(id: string, userId: string): Board {
-    const board = this.findOne(id);
+  async findOneForUser(id: string, userId: string): Promise<Board> {
+    const board = await this.findOne(id);
 
     if (!this.canAccessBoard(board, userId)) {
       throw new ForbiddenException('You do not have access to this board');
@@ -35,91 +57,102 @@ export class BoardsService {
     return board;
   }
 
-  create(createBoardDto: CreateBoardDto, ownerId: string): Board {
-    const now = new Date();
+  async create(
+    createBoardDto: CreateBoardDto,
+    ownerId: string,
+  ): Promise<Board> {
+    const board = await this.prisma.board.create({
+      data: {
+        title: createBoardDto.title,
+        description: createBoardDto.description,
+        visibility: createBoardDto.visibility,
+        ownerId,
+      },
+      include: { members: true },
+    });
 
-    const board: Board = {
-      id: crypto.randomUUID(),
-      title: createBoardDto.title,
-      description: createBoardDto.description,
-      visibility: createBoardDto.visibility,
-      ownerId,
-      memberIds: [],
-      createdAt: now,
-      updatedAt: now,
-    };
+    return this.toBoardModel(board);
+  }
 
-    this.boards.push(board);
+  async update(
+    id: string,
+    updateBoardDto: UpdateBoardDto,
+    userId: string,
+  ): Promise<Board> {
+    const board = await this.findOne(id);
+    this.assertOwner(board, userId);
+
+    const updatedBoard = await this.prisma.board.update({
+      where: { id },
+      data: updateBoardDto,
+      include: { members: true },
+    });
+
+    return this.toBoardModel(updatedBoard);
+  }
+
+  async remove(id: string, userId: string): Promise<Board> {
+    const board = await this.findOne(id);
+    this.assertOwner(board, userId);
+
+    await this.prisma.board.delete({
+      where: { id },
+    });
 
     return board;
   }
 
-  update(id: string, updateBoardDto: UpdateBoardDto, userId: string): Board {
-    const board = this.findOne(id);
-    this.assertOwner(board, userId);
-
-    const updatedBoard: Board = {
-      ...board,
-      ...updateBoardDto,
-      updatedAt: new Date(),
-    };
-
-    this.boards = this.boards.map((board) =>
-      board.id === id ? updatedBoard : board,
-    );
-
-    return updatedBoard;
-  }
-
-  remove(id: string, userId: string): Board {
-    const board = this.findOne(id);
-    this.assertOwner(board, userId);
-
-    this.boards = this.boards.filter((board) => board.id !== id);
-
-    return board;
-  }
-
-  addMember(id: string, ownerId: string, memberId: string): Board {
-    const board = this.findOne(id);
+  async addMember(
+    id: string,
+    ownerId: string,
+    memberId: string,
+  ): Promise<Board> {
+    const board = await this.findOne(id);
     this.assertOwner(board, ownerId);
 
     if (memberId === board.ownerId || board.memberIds.includes(memberId)) {
       return board;
     }
 
-    const updatedBoard: Board = {
-      ...board,
-      visibility: 'shared',
-      memberIds: [...board.memberIds, memberId],
-      updatedAt: new Date(),
-    };
+    const updatedBoard = await this.prisma.board.update({
+      where: { id },
+      data: {
+        visibility: 'shared',
+        members: {
+          create: { userId: memberId },
+        },
+      },
+      include: { members: true },
+    });
 
-    this.boards = this.boards.map((board) =>
-      board.id === id ? updatedBoard : board,
-    );
-
-    return updatedBoard;
+    return this.toBoardModel(updatedBoard);
   }
 
-  removeMember(id: string, ownerId: string, memberId: string): Board {
-    const board = this.findOne(id);
+  async removeMember(
+    id: string,
+    ownerId: string,
+    memberId: string,
+  ): Promise<Board> {
+    const board = await this.findOne(id);
     this.assertOwner(board, ownerId);
 
-    const updatedBoard: Board = {
-      ...board,
-      memberIds: board.memberIds.filter((currentId) => currentId !== memberId),
-      updatedAt: new Date(),
-    };
+    await this.prisma.boardMember.deleteMany({
+      where: { boardId: id, userId: memberId },
+    });
 
-    this.boards = this.boards.map((board) =>
-      board.id === id ? updatedBoard : board,
-    );
+    const updatedBoard = await this.prisma.board.findUnique({
+      where: { id },
+      include: { members: true },
+    });
 
-    return updatedBoard;
+    if (!updatedBoard) {
+      throw new NotFoundException(`Board with id "${id}" not found`);
+    }
+
+    return this.toBoardModel(updatedBoard);
   }
 
-  assertBoardAccess(id: string, userId: string): Board {
+  async assertBoardAccess(id: string, userId: string): Promise<Board> {
     return this.findOneForUser(id, userId);
   }
 
@@ -131,5 +164,18 @@ export class BoardsService {
     if (board.ownerId !== userId) {
       throw new ForbiddenException('Only the board owner can do this');
     }
+  }
+
+  private toBoardModel(board: BoardWithMembers): Board {
+    return {
+      id: board.id,
+      title: board.title,
+      description: board.description ?? undefined,
+      visibility: board.visibility as Board['visibility'],
+      ownerId: board.ownerId,
+      memberIds: board.members.map((member) => member.userId),
+      createdAt: board.createdAt,
+      updatedAt: board.updatedAt,
+    };
   }
 }

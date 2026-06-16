@@ -18,14 +18,14 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  register(registerDto: RegisterDto): AuthResponse {
-    const user = this.usersService.create(registerDto);
+  async register(registerDto: RegisterDto): Promise<AuthResponse> {
+    const user = await this.usersService.create(registerDto);
 
     return this.createAuthResponse(user);
   }
 
-  login(loginDto: LoginDto): AuthResponse {
-    const user = this.usersService.findByEmailWithPassword(loginDto.email);
+  async login(loginDto: LoginDto): Promise<AuthResponse> {
+    const user = await this.usersService.findByEmailWithPassword(loginDto.email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');

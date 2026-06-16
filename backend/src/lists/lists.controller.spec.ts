@@ -1,106 +1,119 @@
-import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BoardsService } from '../boards/boards.service';
 import { ListsController } from './lists.controller';
 import { ListsService } from './lists.service';
 
 describe('ListsController', () => {
   let controller: ListsController;
-  let boardsService: BoardsService;
-  let boardId: string;
+  const boardId = 'board-1';
   const request = { user: { id: 'user-1', email: 'ehab@example.com' } } as any;
+  const list = {
+    id: 'list-1',
+    boardId,
+    title: 'To Do',
+    status: 'todo' as const,
+    position: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const listsService = {
+    findAllForBoard: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ListsController],
-      providers: [ListsService, BoardsService],
+      providers: [
+        {
+          provide: ListsService,
+          useValue: listsService,
+        },
+      ],
     }).compile();
 
     controller = module.get<ListsController>(ListsController);
-    boardsService = module.get<BoardsService>(BoardsService);
-    boardId = boardsService.create(
-      {
-        title: 'Website redesign',
-        visibility: 'private',
-      },
-      request.user.id,
-    ).id;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should return all lists for a board', () => {
-    expect(controller.findAllForBoard(boardId, request)).toEqual([]);
-  });
+  it('should return all lists for a board', async () => {
+    listsService.findAllForBoard.mockResolvedValue([list]);
 
-  it('should create a list', () => {
-    const list = controller.create(boardId, {
-      title: 'To Do',
-    }, request);
-
-    expect(list).toMatchObject({
+    await expect(controller.findAllForBoard(boardId, request)).resolves.toEqual([
+      list,
+    ]);
+    expect(listsService.findAllForBoard).toHaveBeenCalledWith(
       boardId,
-      title: 'To Do',
-      position: 0,
-    });
-    expect(list.id).toBeDefined();
-    expect(list.createdAt).toBeInstanceOf(Date);
-    expect(list.updatedAt).toBeInstanceOf(Date);
-  });
-
-  it('should return one list by id', () => {
-    const list = controller.create(boardId, {
-      title: 'To Do',
-    }, request);
-
-    expect(controller.findOne(boardId, list.id, request)).toEqual(list);
-  });
-
-  it('should throw NotFoundException when list does not exist', () => {
-    expect(() => controller.findOne(boardId, 'missing-list-id', request)).toThrow(
-      NotFoundException,
+      request.user.id,
     );
   });
 
-  it('should update a list', () => {
-    const list = controller.create(boardId, {
+  it('should create a list for a board', async () => {
+    const input = {
       title: 'To Do',
-    }, request);
+      status: 'todo' as const,
+      position: 0,
+    };
+    listsService.create.mockResolvedValue(list);
 
-    const updatedList = controller.update(boardId, list.id, {
-      title: 'In Progress',
-      position: 1,
-    }, request);
-
-    expect(updatedList).toMatchObject({
-      id: list.id,
+    await expect(controller.create(boardId, input, request)).resolves.toEqual(
+      list,
+    );
+    expect(listsService.create).toHaveBeenCalledWith(
       boardId,
-      title: 'In Progress',
-      position: 1,
-      createdAt: list.createdAt,
-    });
+      input,
+      request.user.id,
+    );
   });
 
-  it('should throw when updating a missing list', () => {
-    expect(() =>
-      controller.update(boardId, 'missing-list-id', {
-        title: 'Updated title',
-      }, request),
-    ).toThrow();
+  it('should return one list by id', async () => {
+    listsService.findOne.mockResolvedValue(list);
+
+    await expect(controller.findOne(boardId, list.id, request)).resolves.toEqual(
+      list,
+    );
+    expect(listsService.findOne).toHaveBeenCalledWith(
+      boardId,
+      list.id,
+      request.user.id,
+    );
   });
 
-  it('should remove a list', () => {
-    const list = controller.create(boardId, {
-      title: 'To Do',
-    }, request);
+  it('should update a list', async () => {
+    const input = { title: 'In Progress', position: 1 };
+    const updatedList = { ...list, ...input };
+    listsService.update.mockResolvedValue(updatedList);
 
-    expect(controller.remove(boardId, list.id, request)).toEqual(list);
-    expect(controller.findAllForBoard(boardId, request)).toEqual([]);
+    await expect(
+      controller.update(boardId, list.id, input, request),
+    ).resolves.toEqual(updatedList);
+    expect(listsService.update).toHaveBeenCalledWith(
+      boardId,
+      list.id,
+      input,
+      request.user.id,
+    );
   });
 
-  it('should throw when removing a missing list', () => {
-    expect(() => controller.remove(boardId, 'missing-list-id', request)).toThrow();
+  it('should remove a list', async () => {
+    listsService.remove.mockResolvedValue(list);
+
+    await expect(controller.remove(boardId, list.id, request)).resolves.toEqual(
+      list,
+    );
+    expect(listsService.remove).toHaveBeenCalledWith(
+      boardId,
+      list.id,
+      request.user.id,
+    );
   });
 });

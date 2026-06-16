@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum BoardVisibility {
+  private
+  shared
+}
+
+enum ListStatus {
+  todo
+  in_progress @map("in-progress")
+  done
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  ownedBoards  Board[]
+  memberships  BoardMember[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Board {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  visibility  BoardVisibility
+  ownerId     String
+  owner       User            @relation(fields: [ownerId], references: [id])
+  members     BoardMember[]
+  lists       ProjectList[]
+  cards       Card[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model BoardMember {
+  id        String   @id @default(uuid())
+  boardId   String
+  userId    String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([boardId, userId])
+}
+
+model ProjectList {
+  id        String     @id @default(uuid())
+  boardId   String
+  board     Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  status    ListStatus
+  position  Int
+  cards     Card[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Card {
+  id          String      @id @default(uuid())
+  boardId     String
+  listId      String
+  board       Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  list        ProjectList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  position    Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}

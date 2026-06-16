@@ -1,23 +1,28 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PublicUser, User } from './user.model';
 
 @Injectable()
 export class UsersService {
-  private users: User[] = [];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): PublicUser[] {
-    return this.users.map((user) => this.toPublicUser(user));
+  async findAll(): Promise<PublicUser[]> {
+    const users = await this.prisma.user.findMany();
+
+    return users.map((user) => this.toPublicUser(user));
   }
 
-  findOne(id: string): PublicUser {
-    return this.toPublicUser(this.findOneWithPassword(id));
+  async findOne(id: string): Promise<PublicUser> {
+    return this.toPublicUser(await this.findOneWithPassword(id));
   }
 
-  findOneWithPassword(id: string): User {
-    const user = this.users.find((user) => user.id === id);
+  async findOneWithPassword(id: string): Promise<User> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
 
     if (!user) {
       throw new NotFoundException(`User with id "${id}" not found`);
@@ -26,54 +31,49 @@ export class UsersService {
     return user;
   }
 
-  findByEmailWithPassword(email: string): User | undefined {
-    return this.users.find((user) => user.email === email);
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
   }
 
-  create(createUserDto: CreateUserDto): PublicUser {
-    const existingUser = this.findByEmailWithPassword(createUserDto.email);
+  async create(createUserDto: CreateUserDto): Promise<PublicUser> {
+    const existingUser = await this.findByEmailWithPassword(createUserDto.email);
 
     if (existingUser) {
       throw new ConflictException('A user with this email already exists');
     }
 
-    const now = new Date();
     const passwordHash = bcrypt.hashSync(createUserDto.password, 10);
 
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: createUserDto.name,
-      email: createUserDto.email,
-      passwordHash,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    this.users.push(user);
+    const user = await this.prisma.user.create({
+      data: {
+        name: createUserDto.name,
+        email: createUserDto.email,
+        passwordHash,
+      },
+    });
 
     return this.toPublicUser(user);
   }
 
-  update(id: string, updateUserDto: UpdateUserDto): PublicUser {
-    const user = this.findOneWithPassword(id);
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<PublicUser> {
+    await this.findOneWithPassword(id);
 
-    const updatedUser: User = {
-      ...user,
-      ...updateUserDto,
-      updatedAt: new Date(),
-    };
-
-    this.users = this.users.map((user) =>
-      user.id === id ? updatedUser : user,
-    );
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
 
     return this.toPublicUser(updatedUser);
   }
 
-  remove(id: string): PublicUser {
-    const user = this.findOneWithPassword(id);
+  async remove(id: string): Promise<PublicUser> {
+    await this.findOneWithPassword(id);
 
-    this.users = this.users.filter((user) => user.id !== id);
+    const user = await this.prisma.user.delete({
+      where: { id },
+    });
 
     return this.toPublicUser(user);
   }

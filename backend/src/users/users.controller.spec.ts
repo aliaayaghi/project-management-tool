@@ -1,100 +1,87 @@
-import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
+  const user = {
+    id: 'user-1',
+    name: 'Ehab',
+    email: 'ehab@example.com',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const usersService = {
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
-      providers: [UsersService],
+      providers: [
+        {
+          provide: UsersService,
+          useValue: usersService,
+        },
+      ],
     }).compile();
 
     controller = module.get<UsersController>(UsersController);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should return all users', () => {
-    expect(controller.findAll()).toEqual([]);
+  it('should return all users', async () => {
+    usersService.findAll.mockResolvedValue([user]);
+
+    await expect(controller.findAll()).resolves.toEqual([user]);
+    expect(usersService.findAll).toHaveBeenCalledWith();
   });
 
-  it('should create a user', () => {
-    const user = controller.create({
+  it('should create a user', async () => {
+    const input = {
       name: 'Ehab',
       email: 'ehab@example.com',
       password: 'password123',
-    });
+    };
+    usersService.create.mockResolvedValue(user);
 
-    expect(user).toMatchObject({
-      name: 'Ehab',
-      email: 'ehab@example.com',
-    });
-    expect(user.id).toBeDefined();
-    expect(user.createdAt).toBeInstanceOf(Date);
-    expect(user.updatedAt).toBeInstanceOf(Date);
-    expect(user).not.toHaveProperty('passwordHash');
+    await expect(controller.create(input)).resolves.toEqual(user);
+    expect(usersService.create).toHaveBeenCalledWith(input);
   });
 
-  it('should return one user by id', () => {
-    const user = controller.create({
-      name: 'Ehab',
-      email: 'ehab@example.com',
-      password: 'password123',
-    });
+  it('should return one user by id', async () => {
+    usersService.findOne.mockResolvedValue(user);
 
-    expect(controller.findOne(user.id)).toEqual(user);
+    await expect(controller.findOne(user.id)).resolves.toEqual(user);
+    expect(usersService.findOne).toHaveBeenCalledWith(user.id);
   });
 
-  it('should throw NotFoundException when user does not exist', () => {
-    expect(() => controller.findOne('missing-user-id')).toThrow(
-      NotFoundException,
+  it('should update a user', async () => {
+    const input = { name: 'Ehab N.' };
+    const updatedUser = { ...user, ...input };
+    usersService.update.mockResolvedValue(updatedUser);
+
+    await expect(controller.update(user.id, input)).resolves.toEqual(
+      updatedUser,
     );
+    expect(usersService.update).toHaveBeenCalledWith(user.id, input);
   });
 
-  it('should update a user', () => {
-    const user = controller.create({
-      name: 'Ehab',
-      email: 'ehab@example.com',
-      password: 'password123',
-    });
+  it('should remove a user', async () => {
+    usersService.remove.mockResolvedValue(user);
 
-    const updatedUser = controller.update(user.id, {
-      name: 'Ehab N.',
-    });
-
-    expect(updatedUser).toMatchObject({
-      id: user.id,
-      name: 'Ehab N.',
-      email: 'ehab@example.com',
-      createdAt: user.createdAt,
-    });
-  });
-
-  it('should throw when updating a missing user', () => {
-    expect(() =>
-      controller.update('missing-user-id', {
-        name: 'Updated name',
-      }),
-    ).toThrow();
-  });
-
-  it('should remove a user', () => {
-    const user = controller.create({
-      name: 'Ehab',
-      email: 'ehab@example.com',
-      password: 'password123',
-    });
-
-    expect(controller.remove(user.id)).toEqual(user);
-    expect(controller.findAll()).toEqual([]);
-  });
-
-  it('should throw when removing a missing user', () => {
-    expect(() => controller.remove('missing-user-id')).toThrow();
+    await expect(controller.remove(user.id)).resolves.toEqual(user);
+    expect(usersService.remove).toHaveBeenCalledWith(user.id);
   });
 });
