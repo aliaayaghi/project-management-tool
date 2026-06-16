@@ -45,6 +45,7 @@ function submitForm() {
         class="card-create-form__field"
         type="text"
         placeholder="Card title"
+        maxlength="200"
         :aria-invalid="Boolean(titleError)"
         :aria-describedby="`card-title-error-${listId}`"
       />
@@ -64,6 +65,7 @@ function submitForm() {
         class="card-create-form__field"
         type="text"
         placeholder="Description"
+        maxlength="500"
       />
     </label>
 
@@ -84,8 +86,8 @@ function submitForm() {
   display: grid;
   gap: 0.3rem;
   color: var(--card-text);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .card-create-form__field {
@@ -110,22 +112,29 @@ function submitForm() {
 
 .card-create-form__error {
   color: var(--danger);
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .card-create-form__button {
   min-height: 2.35rem;
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--clay);
   border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--accent);
+  background: var(--clay);
+  color: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .card-create-form__button:hover {
-  border-color: var(--accent);
+  background: var(--clay-hover);
+  border-color: var(--clay-hover);
+}
+
+.card-create-form__button:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
 }
 </style>

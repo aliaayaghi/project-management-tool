@@ -5,17 +5,11 @@ import type {
 } from '../models/auth'
 import type { Board, CreateBoardInput, UpdateBoardInput } from '../models/board'
 import type { Card, CreateCardInput, UpdateCardInput } from '../models/card'
-import type { ListStatus, ProjectList, UpdateListInput } from '../models/list'
+import type { CreateListInput, ListStatus, ProjectList, UpdateListInput } from '../models/list'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 const AUTH_TOKEN_STORAGE_KEY = 'project-management-auth-token'
-
-type CreateListInput = {
-  title: string
-  status: ListStatus
-  position: number
-}
 
 type ApiErrorResponse = {
   message?: string | string[]

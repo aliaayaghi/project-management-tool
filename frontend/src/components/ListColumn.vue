@@ -18,10 +18,13 @@ const emit = defineEmits<{
   updateList: [listId: string, input: UpdateListInput]
   deleteList: [listId: string]
   moveCard: [cardId: string, targetListId: string]
+  moveList: [listId: string, targetListId: string]
 }>()
 
 const showCardForm = ref(false)
 const isEditingList = ref(false)
+const isConfirmingDelete = ref(false)
+const isMenuOpen = ref(false)
 const listTitle = ref(props.list.title)
 const listStatus = ref<ListStatus>(props.list.status)
 const listTitleError = ref('')
@@ -65,8 +68,17 @@ function submitListUpdate() {
   isEditingList.value = false
 }
 
+function confirmDelete() {
+  isConfirmingDelete.value = true
+}
+
+function cancelDelete() {
+  isConfirmingDelete.value = false
+}
+
 function deleteList() {
   emit('deleteList', props.list.id)
+  isConfirmingDelete.value = false
 }
 
 function updateCard(card: Card, input: UpdateCardInput) {
@@ -77,24 +89,34 @@ function deleteCard(card: Card) {
   emit('deleteCard', card)
 }
 
-function dropCard(event: DragEvent) {
-  const cardId = event.dataTransfer?.getData('text/plain')
+function startDrag(event: DragEvent) {
+  if (!event.dataTransfer) return
+  event.dataTransfer.setData('list', props.list.id)
+  event.dataTransfer.effectAllowed = 'move'
+}
 
-  if (!cardId) {
+function onDrop(event: DragEvent) {
+  const cardId = event.dataTransfer?.getData('card')
+  if (cardId) {
+    emit('moveCard', cardId, props.list.id)
     return
   }
-
-  emit('moveCard', cardId, props.list.id)
+  const listId = event.dataTransfer?.getData('list')
+  if (listId) {
+    emit('moveList', listId, props.list.id)
+  }
 }
 </script>
 
 <template>
   <section
-  class="list-column"
-  :class="`list-column--${list.status}`"
-  @dragover.prevent
-  @drop="dropCard"
->
+    class="list-column"
+    :class="`list-column--${list.status}`"
+    draggable="true"
+    @dragstart="startDrag"
+    @dragover.prevent
+    @drop="onDrop"
+  >
     <header class="list-column__header">
       <form v-if="isEditingList" class="list-column__form" @submit.prevent="submitListUpdate">
         <label class="list-column__group">
@@ -130,16 +152,42 @@ function dropCard(event: DragEvent) {
       </form>
 
       <template v-else>
-        <div>
+        <div class="list-column__title-area">
           <h3>{{ list.title }}</h3>
-          <div class="list-column__actions">
-            <button class="list-column__button" type="button" @click="startEditingList">Edit</button>
+          <div v-if="isConfirmingDelete" class="list-column__actions">
+            <span class="list-column__confirm-text">Delete list?</span>
             <button class="list-column__button list-column__button--danger" type="button" @click="deleteList">
-              Delete
+              Confirm
             </button>
+            <button class="list-column__button" type="button" @click="cancelDelete">Cancel</button>
           </div>
         </div>
-        <span class="list-column__count">{{ cards.length }}</span>
+        <div class="list-column__header-right">
+          <span class="list-column__count">{{ cards.length }}</span>
+          <div class="list-column__menu">
+            <div v-if="isMenuOpen" class="list-column__menu-backdrop" @click="isMenuOpen = false" />
+            <button
+              class="list-column__menu-trigger"
+              type="button"
+              :aria-label="`Options for ${list.title}`"
+              @click="isMenuOpen = !isMenuOpen"
+            >⋮</button>
+            <div v-if="isMenuOpen" class="list-column__dropdown" role="menu">
+              <button
+                class="list-column__dropdown-item"
+                type="button"
+                role="menuitem"
+                @click="isMenuOpen = false; startEditingList()"
+              >Edit</button>
+              <button
+                class="list-column__dropdown-item list-column__dropdown-item--danger"
+                type="button"
+                role="menuitem"
+                @click="isMenuOpen = false; confirmDelete()"
+              >Delete</button>
+            </div>
+          </div>
+        </div>
       </template>
     </header>
 
@@ -154,7 +202,7 @@ function dropCard(event: DragEvent) {
     </div>
 
     <p v-else class="list-column__empty">
-      {{ emptyMessage ?? 'No cards yet.' }}
+      {{ emptyMessage ?? 'No cards yet. Hit + to add one.' }}
     </p>
 
     <button
@@ -176,9 +224,9 @@ function dropCard(event: DragEvent) {
 
 <style scoped>
 .list-column {
-  min-width: 17rem;
+  min-width: 14rem;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 0.75rem;
   background: var(--column-bg);
 }
 
@@ -186,14 +234,34 @@ function dropCard(event: DragEvent) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.list-column__title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-column__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 h3 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.list-column__confirm-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--danger);
 }
 
 .list-column__count {
@@ -201,45 +269,45 @@ h3 {
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
   text-align: center;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .list-column--todo h3 {
-  color: #2e5070;
+  color: var(--status-todo-text);
 }
 
 .list-column--todo .list-column__count {
-  background: #daeaf5;
-  color: #2e5070;
+  background: var(--status-todo-fill);
+  color: var(--status-todo-text);
 }
 
 .list-column--in-progress h3 {
-  color: #8a4030;
+  color: var(--status-progress-text);
 }
 
 .list-column--in-progress .list-column__count {
-  background: #f5e0d8;
-  color: #8a4030;
+  background: var(--status-progress-fill);
+  color: var(--status-progress-text);
 }
 
 .list-column--done h3 {
-  color: #3d5c28;
+  color: var(--status-done-text);
 }
 
 .list-column--done .list-column__count {
-  background: #dff0d4;
-  color: #3d5c28;
+  background: var(--status-done-fill);
+  color: var(--status-done-text);
 }
 
 .list-column__cards {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .list-column__empty {
   margin: 0;
-  color: #6d6258;
+  color: var(--empty-text);
 }
 
 .list-column__add-card {
@@ -247,16 +315,21 @@ h3 {
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   border: 1px solid var(--card-border);
   border-radius: 999px;
   background: var(--card-bg);
-  color: #2e5070;
+  color: var(--accent);
   cursor: pointer;
   font: inherit;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1;
+}
+
+.list-column__add-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .list-column__form {
@@ -269,12 +342,12 @@ h3 {
   display: grid;
   gap: 0.3rem;
   color: var(--card-text);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .list-column__field {
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 0 0.65rem;
@@ -283,42 +356,140 @@ h3 {
   font: inherit;
 }
 
+.list-column__field:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
 .list-column__field[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
 .list-column__error {
   color: var(--danger);
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .list-column__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
   margin-top: 0.45rem;
 }
 
 .list-column__button {
-  min-height: 1.9rem;
+  min-height: 2rem;
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 0 0.55rem;
+  padding: 0 0.6rem;
   background: var(--card-bg);
   color: var(--accent);
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.list-column__button:hover {
+  border-color: var(--accent);
+}
+
+.list-column__button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .list-column__button--danger {
-  color: #a33434;
+  color: var(--danger);
 }
 
-.list-column__empty {
-  color: var(--empty-text);
+.list-column__button--danger:hover {
+  border-color: var(--danger);
+}
+
+.list-column__menu {
+  position: relative;
+}
+
+.list-column__menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
+.list-column__menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--card-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.list-column__menu-trigger:hover {
+  background: var(--card-border);
+  color: var(--card-text);
+}
+
+.list-column__menu-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.list-column__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 8rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.25rem;
+  background: var(--card-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.list-column__dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--card-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.list-column__dropdown-item:hover {
+  background: var(--card-border);
+}
+
+.list-column__dropdown-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.list-column__dropdown-item--danger {
+  color: var(--danger);
+}
+
+.list-column__dropdown-item--danger:hover {
+  background: rgba(220, 53, 69, 0.08);
 }
 
 :global(.app-shell--dark) .list-column__add-card {

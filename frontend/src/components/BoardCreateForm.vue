@@ -45,6 +45,7 @@ function submitForm() {
         class="board-create-form__field"
         type="text"
         placeholder="Board title"
+        maxlength="100"
         :aria-invalid="Boolean(titleError)"
         aria-describedby="board-title-error"
       />
@@ -64,6 +65,7 @@ function submitForm() {
         class="board-create-form__field"
         type="text"
         placeholder="Description"
+        maxlength="500"
       />
     </label>
 
@@ -94,8 +96,8 @@ function submitForm() {
   display: grid;
   gap: 0.35rem;
   color: var(--card-text);
-  font-size: 0.85rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .board-create-form__field {
@@ -120,25 +122,32 @@ function submitForm() {
 
 .board-create-form__error {
   color: var(--danger);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .board-create-form__button {
   min-height: 2.75rem;
   margin-top: 1.55rem;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--clay);
   border-radius: 8px;
   padding: 0 1rem;
-  background: var(--accent);
+  background: var(--clay);
   color: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .board-create-form__button:hover {
-  background: var(--accent-hover);
+  background: var(--clay-hover);
+  border-color: var(--clay-hover);
+}
+
+.board-create-form__button:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
 }
 
 @media (max-width: 760px) {

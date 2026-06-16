@@ -24,8 +24,8 @@ async function submitLogin() {
   <section class="auth-page">
     <form class="auth-form" @submit.prevent="submitLogin">
       <div>
-        <p class="auth-form__eyebrow">Welcome back</p>
         <h2>Log in</h2>
+        <p class="auth-form__tagline">Your boards are waiting.</p>
       </div>
 
       <label>
@@ -78,22 +78,18 @@ async function submitLogin() {
   color: var(--card-text);
 }
 
-.auth-form__eyebrow {
-  margin: 0 0 0.25rem;
-  color: var(--accent);
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 h2 {
   margin: 0;
   font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 label {
   display: grid;
   gap: 0.4rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 input {
@@ -101,25 +97,49 @@ input {
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 0 0.85rem;
-  background: var(--board-bg);
+  background: var(--card-bg);
   color: var(--card-text);
   font: inherit;
 }
 
+input:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
 .auth-form__submit {
   min-height: 2.75rem;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--clay);
   border-radius: 8px;
-  background: var(--accent);
+  background: var(--clay);
   color: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-form__submit:hover {
+  background: var(--clay-hover);
+  border-color: var(--clay-hover);
+}
+
+.auth-form__submit:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
 }
 
 .auth-form__submit:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.auth-form__tagline {
+  margin: 0.25rem 0 0;
+  color: var(--card-muted);
+  font-size: 0.9375rem;
+  font-weight: 400;
 }
 
 .auth-form__switch {
@@ -129,6 +149,6 @@ input {
 
 .auth-form__switch a {
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 600;
 }
 </style>

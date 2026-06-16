@@ -10,6 +10,12 @@ export type ProjectList = {
   updatedAt: string
 }
 
+export type CreateListInput = {
+  title: string
+  status: ListStatus
+  position: number
+}
+
 export type UpdateListInput = {
   title?: string
   status?: ListStatus

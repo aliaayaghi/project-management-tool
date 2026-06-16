@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import BoardDetailView from '../components/BoardDetailView.vue'
 import { useProjectStore } from '../stores/projectStore'
 import type { Card, CreateCardInput, UpdateCardInput } from '../models/card'
-import type { UpdateListInput } from '../models/list'
+import type { CreateListInput, UpdateListInput } from '../models/list'
 
 const route = useRoute()
 const projectStore = useProjectStore()
@@ -66,9 +66,15 @@ function deleteCard(card: Card) {
 }
 
 function moveCard(card: Card, targetListId: string) {
-  projectStore.updateCard(card, {
-    listId: targetListId,
-  })
+  projectStore.updateCard(card, { listId: targetListId })
+}
+
+function moveList(listId: string, targetListId: string) {
+  projectStore.moveList(boardId.value, listId, targetListId)
+}
+
+function createList(input: CreateListInput) {
+  projectStore.addList(boardId.value, input)
 }
 </script>
 
@@ -111,6 +117,8 @@ function moveCard(card: Card, targetListId: string) {
       @update-list="updateList"
       @delete-list="deleteList"
       @move-card="moveCard"
+      @move-list="moveList"
+      @create-list="createList"
     />
   </section>
 </template>
@@ -118,7 +126,7 @@ function moveCard(card: Card, targetListId: string) {
 <style scoped>
 .board-page {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .board-page__nav {
@@ -130,11 +138,21 @@ function moveCard(card: Card, targetListId: string) {
 .board-page__nav a {
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 0.45rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: var(--card-bg);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 600;
   text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.board-page__nav a:hover {
+  border-color: var(--accent);
+}
+
+.board-page__nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .board-page__nav a.router-link-active {
@@ -146,12 +164,12 @@ function moveCard(card: Card, targetListId: string) {
   display: grid;
   gap: 0.35rem;
   color: var(--card-text);
-  font-size: 0.9rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .board-page__search input {
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 0 0.85rem;
@@ -169,6 +187,6 @@ function moveCard(card: Card, targetListId: string) {
 .board-page__summary {
   margin: 0;
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

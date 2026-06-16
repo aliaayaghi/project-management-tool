@@ -52,9 +52,6 @@ function toggleBoardForm() {
   <section class="dashboard-page">
     <div class="dashboard-page__toolbar">
       <div>
-        <p class="dashboard-page__eyebrow">
-          {{ projectStore.currentUser?.name }}
-        </p>
         <h2>Board dashboard</h2>
       </div>
 
@@ -94,10 +91,11 @@ function toggleBoardForm() {
     <BoardListView
       :boards="filteredBoards"
       :selected-board-id="null"
+      :is-first-run="!projectStore.boards.length && !boardSearchQuery.trim()"
       :empty-message="
         boardSearchQuery.trim()
           ? 'No boards match your search.'
-          : 'No boards yet. Create your first board above.'
+          : ''
       "
       @select="selectBoard"
       @update="projectStore.updateBoard"
@@ -109,7 +107,7 @@ function toggleBoardForm() {
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .dashboard-page__toolbar {
@@ -119,19 +117,18 @@ function toggleBoardForm() {
   gap: 1rem;
 }
 
-.dashboard-page__eyebrow,
 .dashboard-page__summary {
   margin: 0;
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .dashboard-page__search {
   display: grid;
   gap: 0.35rem;
   color: var(--card-text);
-  font-size: 0.9rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .dashboard-page__search input {
@@ -154,7 +151,8 @@ h2 {
   margin: 0;
   color: var(--card-text);
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 @media (max-width: 760px) {

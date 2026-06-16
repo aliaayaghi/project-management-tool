@@ -1,150 +1,156 @@
-# Project Management Tool
+# Boards — Full-Stack Project Management App
 
-Learning project built with Vue 3 + TypeScript on the frontend and NestJS + TypeScript on the backend.
+A Trello-inspired project management tool built as a **learning project** to practice building full-stack web applications with modern JavaScript frameworks from scratch.
+
+> This project is not intended for production use. Every part of it — auth, drag-and-drop, state management, REST API, database schema — was built intentionally to understand *how* these things work, not just that they work.
+
+---
+
+## Screenshots
+
+**Board dashboard — light mode**
+![Board dashboard showing four boards in a grid layout](screenshots/Screenshot%202026-06-16%20193243.png)
+
+**Board detail — dark mode**
+![Board detail view showing lists and cards with drag-and-drop](screenshots/Screenshot%202026-06-16%20193710.png)
+
+---
+
+## What It Does
+
+Users can sign up, create boards, organize work into lists and cards, and drag items around to reflect progress. It behaves like a lightweight Kanban tool.
+
+**Features built:**
+- User registration and login with JWT authentication
+- Personal dashboard showing all boards with live search
+- Per-board view with lists (columns) and cards
+- Drag-and-drop to move cards between lists and reorder lists
+- Inline editing and deletion for boards, lists, and cards
+- Card search and filter within a board
+- Light and dark theme toggle
+- Persistent data — everything survives page refresh and server restart
+
+---
+
+## Tech Stack
+
+### Frontend
+| Tool | Purpose |
+|---|---|
+| Vue 3 (`<script setup>`) | Component framework — Composition API throughout |
+| TypeScript | Type safety across all components, stores, and API calls |
+| Pinia | Global state management (boards, lists, cards, auth) |
+| Vue Router | Client-side routing with navigation guards |
+| Vite | Dev server and build tool |
+
+### Backend
+| Tool | Purpose |
+|---|---|
+| NestJS | Server framework — modules, controllers, services, guards |
+| Prisma ORM | Database access layer with a typed client |
+| SQLite (`better-sqlite3`) | Local relational database |
+| Passport.js + JWT | Authentication strategy |
+| bcrypt | Password hashing |
+| class-validator | Request body validation via DTOs |
+
+---
+
+## Concepts Explored
+
+This project was built specifically to get hands-on with:
+
+**Vue 3 & Pinia**
+- Composition API with `<script setup lang="ts">` and `defineProps` / `defineEmits`
+- Reactive state with `ref`, `computed`, and `watch`
+- Pinia stores as the single source of truth — actions call the API, then update local state
+- Vue Router navigation guards for protecting authenticated routes
+
+**NestJS**
+- Module system and dependency injection
+- Separating concerns: controllers handle HTTP, services handle logic
+- Custom JWT guard applied at the route level
+- DTO validation with decorators (`@IsString`, `@IsEmail`, etc.)
+
+**Prisma**
+- Schema-first database modeling
+- Migrations to evolve the schema safely
+- Typed queries — no raw SQL, no runtime surprises
+- Seeding a database with realistic demo data
+
+**Authentication**
+- Stateless JWT flow: register → receive token → send token on every request
+- Bcrypt hashing — passwords are never stored in plaintext
+- Auth state persisted in `localStorage` and restored on page load
+
+**Drag and Drop**
+- Native HTML5 Drag-and-Drop API (`draggable`, `dragstart`, `dragover`, `drop`)
+- Passing data between elements via `dataTransfer`
+- Distinguishing card drops from list drops using different data keys
+- Preventing event propagation so nested draggables don't interfere
+
+---
 
 ## Project Structure
 
-```text
-backend/   NestJS API server
-frontend/  Vue 3 client app
+```
+├── frontend/          Vue 3 client
+│   └── src/
+│       ├── api/       Typed fetch wrappers for each endpoint
+│       ├── components/
+│       ├── models/    TypeScript interfaces (Board, List, Card, User)
+│       ├── pages/
+│       ├── router/
+│       └── stores/    Pinia stores (auth, project)
+│
+└── backend/           NestJS API server
+    ├── prisma/
+    │   └── schema.prisma
+    └── src/
+        ├── auth/
+        ├── boards/
+        ├── cards/
+        ├── lists/
+        └── users/
 ```
 
-## Local Development
+---
 
-Install dependencies in each app:
+## Running Locally
 
-```powershell
-cd backend
-npm install
+**Prerequisites:** Node.js 20+
 
-cd ../frontend
-npm install
-
-cd ..
-npm install
+```bash
+# Install all dependencies
+cd backend && npm install
+cd ../frontend && npm install
+cd .. && npm install
 ```
 
-Run the frontend and backend together from the project root:
-
-```powershell
+```bash
+# Run frontend and backend together
 npm run dev
 ```
 
-Or run them separately:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3000`
 
-```powershell
-npm run dev:backend
-npm run dev:frontend
-```
+**Seed the demo account:**
 
-The backend runs on `http://localhost:3000`.
-The frontend usually runs on `http://localhost:5173`.
-
-## Database
-
-The backend uses Prisma with SQLite. Local data is stored in:
-
-```text
-backend/dev.db
-```
-
-Create or update the database schema:
-
-```powershell
-npm run db:migrate
-```
-
-Generate the Prisma client:
-
-```powershell
+```bash
 cd backend
-npm run db:generate
+npm run build && node dist/prisma/demo-seed.js
 ```
 
-Seed sample data:
-
-```powershell
-npm run db:seed
+```
+Email    : aliaa@boards.demo
+Password : Demo@Boards#9Kx!
 ```
 
-Open Prisma Studio:
+The demo account comes with four pre-loaded boards (Product Roadmap, Marketing Sprint, Bug Tracker, Personal) with realistic lists and cards to explore.
 
-```powershell
-npm run db:studio
+**Database commands:**
+
+```bash
+npm run db:migrate   # apply schema migrations
+npm run db:studio    # open Prisma Studio (visual DB browser)
 ```
-
-Demo login:
-
-```text
-demo@example.com
-password123
-```
-
-## Backend API Examples
-
-Run the backend API:
-
-```powershell
-npm run dev:backend
-```
-
-The backend stores users, boards, memberships, lists, and cards in SQLite through
-Prisma. Data survives backend restarts.
-
-Most project endpoints require a bearer token. Register or log in first, then
-send the returned `accessToken` in the `Authorization` header:
-
-```powershell
-curl -Method POST http://localhost:3000/auth/login `
-  -Headers @{ "Content-Type" = "application/json" } `
-  -Body '{"email":"demo@example.com","password":"password123"}'
-```
-
-### Boards
-
-```powershell
-curl -Headers @{ "Authorization" = "Bearer YOUR_TOKEN" } `
-  http://localhost:3000/boards
-
-curl -Method POST http://localhost:3000/boards `
-  -Headers @{ "Content-Type" = "application/json"; "Authorization" = "Bearer YOUR_TOKEN" } `
-  -Body '{"title":"Learning Board","description":"Database-backed board","visibility":"private"}'
-```
-
-### Lists
-
-Lists are nested under boards.
-
-```powershell
-curl -Headers @{ "Authorization" = "Bearer YOUR_TOKEN" } `
-  http://localhost:3000/boards/YOUR_BOARD_ID/lists
-
-curl -Method POST http://localhost:3000/boards/YOUR_BOARD_ID/lists `
-  -Headers @{ "Content-Type" = "application/json"; "Authorization" = "Bearer YOUR_TOKEN" } `
-  -Body '{"title":"To Do","status":"todo","position":0}'
-```
-
-### Cards
-
-Cards are nested under lists.
-
-```powershell
-curl -Headers @{ "Authorization" = "Bearer YOUR_TOKEN" } `
-  http://localhost:3000/boards/YOUR_BOARD_ID/lists/YOUR_LIST_ID/cards
-
-curl -Method POST http://localhost:3000/boards/YOUR_BOARD_ID/lists/YOUR_LIST_ID/cards `
-  -Headers @{ "Content-Type" = "application/json"; "Authorization" = "Bearer YOUR_TOKEN" } `
-  -Body '{"title":"Create backend API","description":"Persist card in SQLite"}'
-```
-
-### Validation Example
-
-DTO validation rejects invalid request bodies.
-
-```powershell
-curl -Method POST http://localhost:3000/users `
-  -Headers @{ "Content-Type" = "application/json" } `
-  -Body '{"name":"","email":"not-an-email","isAdmin":true}'
-```
-
-Expected response: `400 Bad Request`.

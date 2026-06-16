@@ -6,6 +6,7 @@ defineProps<{
   boards: Board[]
   selectedBoardId: string | null
   emptyMessage?: string
+  isFirstRun?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,8 +42,16 @@ function deleteBoard(boardId: string) {
       @delete="deleteBoard"
     />
 
-    <p v-if="!boards.length" class="board-list-view__empty">
-      {{ emptyMessage ?? 'No boards yet. Create your first board above.' }}
+    <div v-if="!boards.length && isFirstRun" class="board-list-view__welcome">
+      <p class="board-list-view__welcome-heading">Welcome — let's build your first board.</p>
+      <p class="board-list-view__welcome-body">
+        Boards are your workspace. Each board holds lists (like columns) and cards (like tasks).
+        Hit the <strong>+</strong> above to create one now.
+      </p>
+    </div>
+
+    <p v-else-if="!boards.length && emptyMessage" class="board-list-view__empty">
+      {{ emptyMessage }}
     </p>
   </section>
 </template>
@@ -50,8 +59,8 @@ function deleteBoard(boardId: string) {
 <style scoped>
 .board-list-view {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.85rem;
 }
 
 .board-list-view__empty {
@@ -61,5 +70,31 @@ function deleteBoard(boardId: string) {
   padding: 1rem;
   color: var(--card-muted);
   background: var(--card-bg);
+}
+
+.board-list-view__welcome {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--clay);
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  background: var(--clay-soft);
+}
+
+.board-list-view__welcome-heading {
+  margin: 0 0 0.5rem;
+  color: var(--clay);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.board-list-view__welcome-body {
+  margin: 0;
+  color: var(--card-muted);
+  line-height: 1.6;
+}
+
+.board-list-view__welcome-body strong {
+  color: var(--card-text);
+  font-weight: 700;
 }
 </style>

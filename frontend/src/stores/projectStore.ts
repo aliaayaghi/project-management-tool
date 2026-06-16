@@ -2,11 +2,11 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Board, CreateBoardInput, UpdateBoardInput } from '../models/board'
 import type { Card, CreateCardInput, UpdateCardInput } from '../models/card'
-import type { ListStatus, ProjectList, UpdateListInput } from '../models/list'
+import type { CreateListInput, ListStatus, ProjectList, UpdateListInput } from '../models/list'
 import {
   createBoard as createBoardRequest,
   createCard as createCardRequest,
-  createList,
+  createList as createListRequest,
   deleteBoard as deleteBoardRequest,
   deleteCard as deleteCardRequest,
   deleteList as deleteListRequest,
@@ -157,6 +157,21 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function addList(boardId: string, input: CreateListInput) {
+    try {
+      errorMessage.value = ''
+
+      const list = await createListRequest(boardId, input)
+
+      lists.value.push(list)
+
+      return list
+    } catch (error) {
+      errorMessage.value = getErrorMessage(error)
+      return undefined
+    }
+  }
+
   async function updateList(
     boardId: string,
     listId: string,
@@ -186,6 +201,17 @@ export const useProjectStore = defineStore('project', () => {
     } catch (error) {
       errorMessage.value = getErrorMessage(error)
     }
+  }
+
+  async function moveList(boardId: string, listId: string, targetListId: string) {
+    const list = lists.value.find((l) => l.id === listId)
+    const target = lists.value.find((l) => l.id === targetListId)
+    if (!list || !target) return
+
+    await Promise.all([
+      updateList(boardId, listId, { position: target.position }),
+      updateList(boardId, targetListId, { position: list.position }),
+    ])
   }
 
   async function updateCard(card: Card, input: UpdateCardInput) {
@@ -226,7 +252,7 @@ export const useProjectStore = defineStore('project', () => {
   function createDefaultLists(boardId: string) {
     return Promise.all(
       defaultListTemplates.map((listTemplate) =>
-        createList(boardId, {
+        createListRequest(boardId, {
           title: listTemplate.title,
           status: listTemplate.status,
           position: listTemplate.position,
@@ -260,7 +286,9 @@ export const useProjectStore = defineStore('project', () => {
     getBoardLists,
     getBoardCards,
     createCard,
+    addList,
     updateList,
+    moveList,
     deleteList,
     updateCard,
     deleteCard,

@@ -13,6 +13,7 @@ const board = computed(() => projectStore.getBoard(boardId.value))
 const title = ref('')
 const description = ref('')
 const visibility = ref<BoardVisibility>('private')
+const isConfirmingDelete = ref(false)
 
 onMounted(async () => {
   if (!projectStore.boards.length) {
@@ -39,6 +40,14 @@ async function submitSettings() {
     description: trimmedDescription || undefined,
     visibility: visibility.value,
   })
+}
+
+function confirmDelete() {
+  isConfirmingDelete.value = true
+}
+
+function cancelDelete() {
+  isConfirmingDelete.value = false
 }
 
 async function deleteBoard() {
@@ -78,7 +87,6 @@ function syncFormWithBoard() {
 
     <div v-if="board" class="settings-page__layout">
       <form class="settings-page__panel" @submit.prevent="submitSettings">
-        <p class="settings-page__eyebrow">Board settings</p>
         <h2>{{ board.title }}</h2>
 
         <label class="settings-page__field">
@@ -114,7 +122,6 @@ function syncFormWithBoard() {
       </form>
 
       <aside class="settings-page__panel">
-        <p class="settings-page__eyebrow">Sharing</p>
         <dl>
           <div>
             <dt>Visibility</dt>
@@ -138,19 +145,36 @@ function syncFormWithBoard() {
       </aside>
 
       <section class="settings-page__panel settings-page__panel--danger">
-        <p class="settings-page__eyebrow">Danger zone</p>
         <h2>Delete board</h2>
         <p>
-          Deleting this board removes its lists and cards from the current app
-          state.
+          Deleting this board permanently removes all its lists and cards.
         </p>
-        <button
-          class="settings-page__button settings-page__button--danger"
-          type="button"
-          @click="deleteBoard"
-        >
-          Delete board
-        </button>
+        <div v-if="isConfirmingDelete" class="settings-page__actions">
+          <p class="settings-page__confirm-text">This cannot be undone. Are you sure?</p>
+          <button
+            class="settings-page__button settings-page__button--danger"
+            type="button"
+            @click="deleteBoard"
+          >
+            Yes, delete board
+          </button>
+          <button
+            class="settings-page__button settings-page__button--secondary"
+            type="button"
+            @click="cancelDelete"
+          >
+            Cancel
+          </button>
+        </div>
+        <div v-else class="settings-page__actions">
+          <button
+            class="settings-page__button settings-page__button--danger"
+            type="button"
+            @click="confirmDelete"
+          >
+            Delete board
+          </button>
+        </div>
       </section>
     </div>
 
@@ -181,11 +205,21 @@ function syncFormWithBoard() {
 .settings-page__nav a {
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 0.45rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: var(--card-bg);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 600;
   text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.settings-page__nav a:hover {
+  border-color: var(--accent);
+}
+
+.settings-page__nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .settings-page__panel,
@@ -205,22 +239,15 @@ function syncFormWithBoard() {
 
 .settings-page__panel--danger {
   grid-column: 1 / -1;
-  border-color: #a33434;
-}
-
-.settings-page__eyebrow {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.85rem;
-  font-weight: 800;
-  text-transform: uppercase;
+  border-color: var(--danger);
 }
 
 h2 {
   margin: 0;
   color: var(--card-text);
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .settings-page__field {
@@ -230,7 +257,7 @@ h2 {
 
 .settings-page__field span {
   color: var(--card-muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .settings-page__field input,
@@ -261,29 +288,45 @@ h2 {
 }
 
 .settings-page__button {
-  min-height: 2.5rem;
-  border: 1px solid var(--accent);
+  min-height: 2.75rem;
+  border: 1px solid var(--clay);
   border-radius: 8px;
   padding: 0 0.9rem;
-  background: var(--accent);
+  background: var(--clay);
   color: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.settings-page__button:hover {
+  background: var(--clay-hover);
+  border-color: var(--clay-hover);
+}
+
+.settings-page__button:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
 }
 
 .settings-page__button--secondary {
   border-color: var(--card-border);
   background: var(--card-bg);
   color: var(--accent);
+  transition: border-color 0.15s ease;
+}
+
+.settings-page__button--secondary:hover {
+  border-color: var(--accent);
 }
 
 .settings-page__button--danger {
-  border-color: #a33434;
-  background: #a33434;
+  border-color: var(--danger);
+  background: var(--danger);
 }
 
-.settings-page__panel p:not(.settings-page__eyebrow) {
+.settings-page__panel p {
   margin: 0;
   color: var(--card-muted);
 }
@@ -301,13 +344,19 @@ dl div {
 
 dt {
   color: var(--card-muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 dd {
   margin: 0;
   color: var(--card-text);
   font-weight: 700;
+}
+
+.settings-page__confirm-text {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 500;
 }
 
 .settings-page__empty {
